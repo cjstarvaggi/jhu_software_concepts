@@ -1,0 +1,43 @@
+{% extends "base.html" %} {% block title %}Home | My Portfolio{% endblock %} {%
+block content %}
+
+<section class="home-section">
+  <div class="bio-column">
+    <h1>Carl Starvaggi</h1>
+
+    <h2>Systems Engineer 2 at Arcfield</h2>
+
+    <div class="bio-card">
+      <p>
+        Welcome to my portfolio! I'm originally from Frederick MD, and was
+        homeschooled from 1st grade through graduating high school. I attended
+        West Virginia University (Go Mountaineers!) for undergrad, and graduated
+        in December 2023 with two bachelor's degrees, one in mechanical
+        engineering and one in aerospace engineering.
+      </p>
+
+      <p>
+        I'm currently based in Leesburg VA and work full time in Chantilly as a
+        Systems Engineering Technical Assistant (SETA) for Arcfield, a
+        government contractor. A lot of my work is classified, so unfortunately
+        I can't share much in that regard.
+      </p>
+
+      <p>
+        In my spare time, I enjoy swimming, outdoor activities, volunteering,
+        mission work, reading, scoring music, and discussing theology with my
+        friends. For me, every challenge is a new opportunity to both test my
+        limits as an engineer and bring about the greatest good.
+      </p>
+    </div>
+  </div>
+
+  <div class="profile-image">
+    <img
+      src="{{ url_for('static', filename='profile_pic.jpeg') }}"
+      alt="Profile picture of Carl Starvaggi"
+    />
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,200 @@
+/* --------------------------------------------------
+General page styling
+-------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f4f6f8;
+  color: #222;
+  line-height: 1.6;
+}
+
+/* --------------------------------------------------
+Navigation bar
+-------------------------------------------------- */
+
+.navbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+
+  background-color: #1f4e79;
+  padding: 15px 40px;
+
+  gap: 10px;
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+
+  padding: 10px 18px;
+  border-radius: 5px;
+
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+}
+
+/* Changes color when the mouse is over a navigation item */
+.navbar a:hover {
+  background-color: #356f9f;
+}
+
+/* Highlights the page currently being viewed */
+.navbar a.active {
+  background-color: #ffffff;
+  color: #1f4e79;
+}
+
+/* --------------------------------------------------
+Main content area
+-------------------------------------------------- */
+
+.page-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 50px 30px;
+}
+
+/* --------------------------------------------------
+Home page profile card
+-------------------------------------------------- */
+
+.home-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 60px;
+  min-height: 500px;
+}
+
+/* Left side containing name, title, and bio */
+.bio-column {
+  flex: 1;
+}
+
+.bio-column h1 {
+  margin-bottom: 0px;
+  font-size: 42px;
+}
+
+.bio-column h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+
+  color: #1f4e79;
+  font-size: 25px;
+}
+
+/* Card containing only the biography */
+.bio-card {
+  background-color: white;
+
+  padding: 30px;
+
+  border-radius: 8px;
+
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bio-card p {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.bio-card p:last-child {
+  margin-bottom: 0;
+}
+
+/* Right side containing profile image */
+.profile-image {
+  flex: 1;
+  text-align: center;
+}
+
+.profile-image img {
+  width: 350px;
+  max-width: 100%;
+  height: auto;
+
+  border-radius: 50%;
+
+  border: 5px solid #1f4e79;
+}
+
+/* --------------------------------------------------
+Contact and Projects pages
+-------------------------------------------------- */
+
+.content-section {
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.content-section h1 {
+  margin-bottom: 10px;
+
+  color: #222;
+  font-size: 36px;
+}
+
+/* Contact card and project card */
+.contact-card,
+.project-card {
+  background-color: white;
+
+  padding: 5px 30px;
+
+  border-radius: 8px;
+
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.contact-card h2 {
+  color: #1f4e79;
+  margin-bottom: 5px;
+}
+
+.contact-card p {
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+.contact-card a {
+  color: #1f4e79;
+}
+
+.project-card h2 {
+  color: #1f4e79;
+  margin-bottom: 5px;
+}
+
+/* --------------------------------------------------
+GitHub button
+-------------------------------------------------- */
+
+.github-button {
+  display: inline-block;
+
+  margin-top: 5px;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+
+  background-color: #1f4e79;
+  color: white;
+
+  text-decoration: none;
+  border-radius: 5px;
+
+  font-weight: bold;
+}
+
+.github-button:hover {
+  background-color: #356f9f;
+}
