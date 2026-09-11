@@ -25,11 +25,14 @@ allows the scraper to resume from the last completed survey page. Data and
 progress are saved using temporary files and checkpoints to reduce the
 risk of losing progress.
 
-clean.py loads the scraped applicant data and identifies unique
-program/university pairs before sending them to the LLM. This avoids repeated
-LLM calls for identical pairs. The standardized values are added to each
-applicant record as llm-generated-program and llm-generated-university,
-and the completed data is saved to llm_extended_applicant_data.json.
+clean.py loads the scraped applicant data and checks each program and
+university against the canonical lists before using the LLM. Values that match
+the canonical lists are used directly, avoiding an unnecessary LLM call.
+Non-canonical fields are sent to the LLM for standardization, while canonical
+fields are preserved. The script processes records sequentially, maintains
+their original order, and reports canonical matches, skipped LLM calls, LLM
+calls, processing rate, and elapsed time. The cleaned records are saved to 
+llm_extended_applicant_data.json.
 
 # LLM STANDARDIZER UPDATES
 
@@ -53,6 +56,11 @@ acceleration with N_GPU_LAYERS = -1. The model now uses a fixed 2 threads and
 2048-token context, while the existing Hugging Face GGUF download and
 in-memory model caching remain in place.
 
+# LIMITATIONS
+
+The scraper requires Google Chrome and a Windows-specific Chrome executable
+path; Cloudflare verification requires manual interaction.
+
 # KNOWN BUGS
 
 The scraper depends on The Grad Cafe's current HTML structure; as such, changes
@@ -60,5 +68,3 @@ to the site's page layout, field ordering, or pagination could cause incorrect
 or missing data. The result parser also relies on fixed <dd> element positions;
 a more robust version would identify fields by their labels.
 
-The scraper requires Google Chrome and a Windows-specific Chrome executable
-path; Cloudflare verification requires manual interaction.

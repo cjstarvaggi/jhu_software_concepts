@@ -1,10 +1,17 @@
 import json
+import time
 
-from llm_hosting.app import _call_llm
+from llm_hosting.app import (
+    _call_llm,
+    CANON_PROGS,
+    CANON_UNIS,
+)
 
 
-def load_data(input_path):
-    """Load records from a JSON file"""
+def load_data(input_path, limit=None):
+    """
+    Load records from a JSON file
+    """
     with open(input_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -14,63 +21,229 @@ def load_data(input_path):
     if not isinstance(data, list):
         raise ValueError("Input data must be a list of records.")
 
+    if limit is not None:
+        data = data[:limit]
+
     print(f"Loaded {len(data):,} records.")
     return data
 
 
-def _llm_passer(unique_pairs):
-    """Calls the LLM on all the unique pairs"""
-    total = len(unique_pairs)
-
-    for i, (program_name, university) in enumerate(unique_pairs, start=1):
-        result = _call_llm(program_name=program_name, university=university)
-        unique_pairs[(program_name, university)] = result
-
-        if i % 100 == 0 or i == total:
-            print(f"LLM processed {i:,}/{total:,}")
-
-    return unique_pairs
+def _comparison_key(value):
+    """
+    Normalizes for comparison (does not change the actual stored value
+    """
+    value = str(value or "")
+    value = " ".join(value.split())
+    return value.lower()
 
 
-def _get_cleaned_data(unique_pairs):
-    """Appends the LLM data to the applicant data in the desired fields"""
-    cleaned_data = []
-    for row in data:
-        cleaned_row = dict(row)
+def _build_canonical_lookup(values):
+    """
+    Compares a read value to the canon list
+    """
+    lookup = {}
 
-        program_name = str(row.get("program_name") or "").strip()
-        university = str(row.get("university") or "").strip()
+    for value in values:
+        lookup[_comparison_key(value)] = value
 
-        result = unique_pairs[(program_name, university)]
+    return lookup
 
-        cleaned_row["llm-generated-program"] = result["standardized_program"]
 
-        cleaned_row["llm-generated-university"] = result["standardized_university"]
+def _get_canonical_program(value):
+    """
+    Pulls the actual canonical program
+    """
+    CANON_PROG_LOOKUP = _build_canonical_lookup(CANON_PROGS)
+    return CANON_PROG_LOOKUP.get(_comparison_key(value))
 
-        cleaned_data.append(cleaned_row)
 
-    return cleaned_data
+def _get_canonical_university(value):
+    """
+    Pulls the actual canonical university
+    """
+    CANON_UNI_LOOKUP = _build_canonical_lookup(CANON_UNIS)
+    return CANON_UNI_LOOKUP.get(_comparison_key(value))
+
+
+def _canon_check(
+    program_is_canonical,
+    university_is_canonical,
+    canonical_program,
+    canonical_university,
+    program_name,
+    university,
+    llm_calls,
+    skipped_llm,
+    program_matches,
+    university_matches,
+    both_matches,
+):
+    """
+    Checks to see if a program and university matches
+    canon values; if so, there's no need to run the LLM
+    on this entry
+    """
+    if program_is_canonical and university_is_canonical:
+        standardized_program = canonical_program
+        standardized_university = canonical_university
+
+        llm_calls += 0
+        skipped_llm += 1
+        program_matches += 1
+        university_matches += 1
+        both_matches += 1
+
+    else:
+        result = _call_llm(
+            program_name=program_name,
+            university=university,
+            normalize_program=not program_is_canonical,
+            normalize_university=not university_is_canonical,
+        )
+
+        if program_is_canonical:
+            standardized_program = canonical_program
+            program_matches += 1
+        else:
+            standardized_program = result["standardized_program"]
+
+        if university_is_canonical:
+            standardized_university = canonical_university
+            university_matches += 1
+        else:
+            standardized_university = result["standardized_university"]
+
+        llm_calls += 1
+
+    return (
+        standardized_program,
+        standardized_university,
+        llm_calls,
+        skipped_llm,
+        program_matches,
+        university_matches,
+        both_matches,
+    )
+
+
+def _final_cleaning_stats(
+    start_time,
+    total,
+    program_matches,
+    university_matches,
+    both_matches,
+    llm_calls,
+    skipped_llm,
+):
+    """
+    Prints the results of the cleaning operation
+    """
+    print()
+    print()
+
+    elapsed = time.time() - start_time
+    rate = total / elapsed if total > 0 else 0
+
+    print("Cleaning summary")
+    print("----------------")
+    print(f"Total records:                {total:,}")
+    print(f"Program canonical matches:    {program_matches:,}")
+    print(f"University canonical matches: {university_matches:,}")
+    print(f"Both canonical:                {both_matches:,}")
+    print(f"LLM calls:                     {llm_calls:,}")
+    print(f"Skipped LLM calls:             {skipped_llm:,}")
+    print(f"Elapsed time:                  {elapsed:.1f}s")
+    print(f"Average rate:                  {rate:.2f} records/sec")
 
 
 def clean_data(data):
-    """Clean each unique program/university pair using the LLM"""
-    unique_pairs = {}
+    """
+    Cleans records sequentially using one LLM instance;
+    the records remain in their original input order.
+    """
+    total = len(data)
 
-    for row in data:
-        program_name = str(row.get("program_name") or "").strip()
-        university = str(row.get("university") or "").strip()
+    if total == 0:
+        return []
 
-        key = (program_name, university)
+    print("Starting cleaning process...")
+    print()
 
-        if key not in unique_pairs:
-            unique_pairs[key] = None
+    start_time = time.time()
 
-    print(f"Total records: {len(data):,}")
-    print(f"Unique pairs: {len(unique_pairs):,}")
-    print(f"LLM calls required: {len(unique_pairs):,}")
+    llm_calls = 0
+    skipped_llm = 0
+    program_matches = 0
+    university_matches = 0
+    both_matches = 0
 
-    unique_pairs = _llm_passer(unique_pairs)
-    cleaned_data = _get_cleaned_data(unique_pairs)
+    cleaned_data = []
+
+    for index, row in enumerate(data):
+        program_name = row.get("program_name") or ""
+        university = row.get("university") or ""
+
+        canonical_program = _get_canonical_program(program_name)
+        canonical_university = _get_canonical_university(university)
+
+        program_is_canonical = canonical_program is not None
+        university_is_canonical = canonical_university is not None
+
+        [
+            standardized_program,
+            standardized_university,
+            llm_calls,
+            skipped_llm,
+            program_matches,
+            university_matches,
+            both_matches,
+        ] = _canon_check(
+            program_is_canonical,
+            university_is_canonical,
+            canonical_program,
+            canonical_university,
+            program_name,
+            university,
+            llm_calls,
+            skipped_llm,
+            program_matches,
+            university_matches,
+            both_matches,
+        )
+
+        cleaned_row = dict(row)
+
+        cleaned_row["llm-generated-program"] = standardized_program
+        cleaned_row["llm-generated-university"] = standardized_university
+
+        cleaned_data.append(cleaned_row)
+
+        completed = index + 1
+
+        elapsed = time.time() - start_time
+        rate = completed / elapsed if elapsed > 0 else 0
+        remaining = total - completed
+
+        print(
+            f"\rProcessed {completed:,}/{total:,} "
+            f"({completed / total:.1%}) | "
+            f"LLM: {llm_calls:,} | "
+            f"Skipped: {skipped_llm:,} | "
+            f"Rate: {rate:.2f} rec/s | "
+            f"Remaining: {remaining:,}",
+            end="",
+            flush=True,
+        )
+
+    _final_cleaning_stats(
+        start_time,
+        total,
+        program_matches,
+        university_matches,
+        both_matches,
+        llm_calls,
+        skipped_llm,
+    )
 
     return cleaned_data
 
