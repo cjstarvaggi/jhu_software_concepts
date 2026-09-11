@@ -1,0 +1,196 @@
+import json
+import os
+import time
+
+
+from llm_hosting.app import (
+    _call_llm,
+    CANON_PROGS,
+    CANON_UNIS,
+)
+
+
+def load_data(input_path, limit=None):
+    with open(input_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if isinstance(data, dict) and "rows" in data:
+        data = data["rows"]
+
+    if not isinstance(data, list):
+        raise ValueError("Input data must be a list of records.")
+
+    if limit is not None:
+        data = data[:limit]
+
+    print(f"Loaded {len(data):,} records.")
+    return data
+
+
+def comparison_key(value):
+    """
+    Normalize only for comparison.
+
+    This does NOT change the actual value we store.
+    """
+    value = str(value or "")
+    value = " ".join(value.split())
+    return value.lower()
+
+
+def build_canonical_lookup(values):
+    """
+    Build:
+
+        normalized value -> exact canonical value
+
+    Example:
+
+        "university of toronto"
+            -> "University of Toronto"
+    """
+    lookup = {}
+
+    for value in values:
+        lookup[comparison_key(value)] = value
+
+    return lookup
+
+
+CANON_PROG_LOOKUP = build_canonical_lookup(CANON_PROGS)
+CANON_UNI_LOOKUP = build_canonical_lookup(CANON_UNIS)
+
+
+def get_canonical_program(value):
+    return CANON_PROG_LOOKUP.get(comparison_key(value))
+
+
+def get_canonical_university(value):
+    return CANON_UNI_LOOKUP.get(comparison_key(value))
+
+
+def clean_data(data):
+    """
+    Clean records sequentially using one LLM instance.
+
+    Records remain in their original input order.
+    """
+    total = len(data)
+
+    if total == 0:
+        return []
+
+    print("Starting cleaning with 1 worker...")
+    print()
+
+    start_time = time.time()
+
+    llm_calls = 0
+    skipped_llm = 0
+    program_matches = 0
+    university_matches = 0
+    both_matches = 0
+
+    cleaned_data = []
+
+    for index, row in enumerate(data):
+        program_name = row.get("program_name") or ""
+        university = row.get("university") or ""
+
+        canonical_program = get_canonical_program(program_name)
+        canonical_university = get_canonical_university(university)
+
+        program_is_canonical = canonical_program is not None
+        university_is_canonical = canonical_university is not None
+
+        if program_is_canonical and university_is_canonical:
+            standardized_program = canonical_program
+            standardized_university = canonical_university
+
+            llm_calls += 0
+            skipped_llm += 1
+            program_matches += 1
+            university_matches += 1
+            both_matches += 1
+
+        else:
+            result = _call_llm(
+                program_name=program_name,
+                university=university,
+                normalize_program=not program_is_canonical,
+                normalize_university=not university_is_canonical,
+            )
+
+            # Never allow the LLM to modify an already-canonical field.
+            if program_is_canonical:
+                standardized_program = canonical_program
+                program_matches += 1
+            else:
+                standardized_program = result["standardized_program"]
+
+            if university_is_canonical:
+                standardized_university = canonical_university
+                university_matches += 1
+            else:
+                standardized_university = result["standardized_university"]
+
+            llm_calls += 1
+
+        cleaned_row = dict(row)
+
+        cleaned_row["llm-generated-program"] = standardized_program
+        cleaned_row["llm-generated-university"] = standardized_university
+
+        cleaned_data.append(cleaned_row)
+
+        completed = index + 1
+
+        elapsed = time.time() - start_time
+        rate = completed / elapsed if elapsed > 0 else 0
+        remaining = total - completed
+
+        print(
+            f"\rProcessed {completed:,}/{total:,} "
+            f"({completed / total:.1%}) | "
+            f"LLM: {llm_calls:,} | "
+            f"Skipped: {skipped_llm:,} | "
+            f"Rate: {rate:.2f} rec/s | "
+            f"Remaining: {remaining:,}",
+            end="",
+            flush=True,
+        )
+
+    print()
+    print()
+
+    elapsed = time.time() - start_time
+    rate = total / elapsed if total > 0 else 0
+
+    print("Cleaning summary")
+    print("----------------")
+    print(f"Total records:                {total:,}")
+    print(f"Program canonical matches:    {program_matches:,}")
+    print(f"University canonical matches: {university_matches:,}")
+    print(f"Both canonical:                {both_matches:,}")
+    print(f"LLM calls:                     {llm_calls:,}")
+    print(f"Skipped LLM calls:             {skipped_llm:,}")
+    print(f"Elapsed time:                  {elapsed:.1f}s")
+    print(f"Average rate:                  {rate:.2f} records/sec")
+
+    return cleaned_data
+
+
+def save_cleaned_data(data, output_path):
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    print(f"Saved {len(data):,} records to {output_path}")
+
+
+if __name__ == "__main__":
+    input_path = "applicant_data.json"
+    output_path = "llm_extended_applicant_data.json"
+
+    data = load_data(input_path)
+    cleaned_data = clean_data(data)
+    save_cleaned_data(cleaned_data, output_path)
