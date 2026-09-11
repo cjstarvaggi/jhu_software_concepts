@@ -18,7 +18,7 @@ def load_data(input_path):
     return data
 
 
-def _call_llm(unique_pairs):
+def _llm_passer(unique_pairs):
     """Calls the LLM on all the unique pairs"""
     total = len(unique_pairs)
 
@@ -43,13 +43,9 @@ def _get_cleaned_data(unique_pairs):
 
         result = unique_pairs[(program_name, university)]
 
-        cleaned_row["llm-generated-program"] = result[
-            "standardized_program"
-        ]
+        cleaned_row["llm-generated-program"] = result["standardized_program"]
 
-        cleaned_row["llm-generated-university"] = result[
-            "standardized_university"
-        ]
+        cleaned_row["llm-generated-university"] = result["standardized_university"]
 
         cleaned_data.append(cleaned_row)
 
@@ -73,7 +69,7 @@ def clean_data(data):
     print(f"Unique pairs: {len(unique_pairs):,}")
     print(f"LLM calls required: {len(unique_pairs):,}")
 
-    unique_pairs = _call_llm(unique_pairs)
+    unique_pairs = _llm_passer(unique_pairs)
     cleaned_data = _get_cleaned_data(unique_pairs)
 
     return cleaned_data

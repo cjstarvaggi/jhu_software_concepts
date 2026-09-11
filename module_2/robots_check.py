@@ -4,7 +4,7 @@ agent = "cs_scraper"
 url = "https://www.thegradcafe.com/"
 
 parser = robotparser.RobotFileParser(url)
-parser.set_url(f'{url}robots.txt')
+parser.set_url(f"{url}robots.txt")
 parser.read()
 
 paths = [

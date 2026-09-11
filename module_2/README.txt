@@ -7,23 +7,29 @@ Due Date: 09/13/2026
 
 # APPROACH
 
-`robots_check.py` uses `urllib.robotparser` to check whether the site's 
+robots_check.py uses urllib.robotparser to check whether the site's
 landing page ("/") and survey page ("/survey/") are permitted by robots.txt;
-`screenshot.jpg` documents the results.
+screenshot.jpg documents the results.
 
-`scraper.py` uses a Selenium + Chrome + BeautifulSoup workflow; Chrome is
-launched and manually verified through Cloudflare, after which Selenium 
-attaches to the browser through its remote debugging port. Result pages 
-are fetched using JavaScript `fetch()` within the verified browser session 
-and parsed with BeautifulSoup. `urllib.parse.urljoin` is only used for 
+scraper.py uses a Selenium + Chrome + BeautifulSoup workflow; Chrome is
+launched and manually verified through Cloudflare, after which Selenium
+attaches to the browser through its remote debugging port. Result pages
+are fetched using JavaScript fetch() within the verified browser session
+and parsed with BeautifulSoup. urllib.parse.urljoin is only used for
 constructing URLs.
 
-Applicant data is stored as dictionaries in `applicant_data.json`. Results are
-processed in batches of 20 (skipping duplicate URLs to retain efficiency); 
-scraping continues until 50,000 records are collected. `scrape_progress.json` 
-allows the scraper to resume from the last completed survey page. Data and 
-progress are saved using temporary files and checkpoints to reduce the 
+Applicant data is stored as dictionaries in applicant_data.json. Results are
+processed in batches of 20 (skipping duplicate URLs to retain efficiency);
+scraping continues until 50,000 records are collected. scrape_progress.json
+allows the scraper to resume from the last completed survey page. Data and
+progress are saved using temporary files and checkpoints to reduce the
 risk of losing progress.
+
+clean.py loads the scraped applicant data and identifies unique
+program/university pairs before sending them to the LLM. This avoids repeated
+LLM calls for identical pairs. The standardized values are added to each
+applicant record as llm-generated-program and llm-generated-university,
+and the completed data is saved to llm_extended_applicant_data.json.
 
 # LLM STANDARDIZER UPDATES
 
@@ -43,15 +49,15 @@ are now marked as verified and protected from LLM modification; only fields
 that do not match the canonical lists are allowed to be standardized.
 
 The LLM hosting configuration was also changed from CPU-only execution to GPU
-acceleration with `N_GPU_LAYERS = -1`. The model now uses a fixed 2 threads and
+acceleration with N_GPU_LAYERS = -1. The model now uses a fixed 2 threads and
 2048-token context, while the existing Hugging Face GGUF download and
 in-memory model caching remain in place.
 
 # KNOWN BUGS
 
-The scraper depends on The Grad Cafe's current HTML structure; as such, changes 
-to the site's page layout, field ordering, or pagination could cause incorrect 
-or missing data. The result parser also relies on fixed `<dd>` element positions;
+The scraper depends on The Grad Cafe's current HTML structure; as such, changes
+to the site's page layout, field ordering, or pagination could cause incorrect
+or missing data. The result parser also relies on fixed <dd> element positions;
 a more robust version would identify fields by their labels.
 
 The scraper requires Google Chrome and a Windows-specific Chrome executable

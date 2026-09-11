@@ -15,7 +15,7 @@ target_records = 50000
 batch_size = 20
 data_file_name = "applicant_data.json"
 progress_file_name = "scrape_progress.json"
-chrome_path = (r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 chrome_profile = r"C:\temp\selenium-chrome"
 chrome_port = 9222
 base_url = "https://www.thegradcafe.com"
@@ -23,10 +23,10 @@ survey_url = urljoin(base_url, "/survey")
 
 
 def _new_applicant_item():
-    '''
+    """
     Returns a dataframe of all the desired categories with default
     None values for each
-    '''
+    """
 
     return {
         "program_name": None,
@@ -48,6 +48,7 @@ def _new_applicant_item():
         "gre_aw": None,
     }
 
+
 def _load_data():
     """
     Loads the previously scraped applicant data
@@ -59,9 +60,10 @@ def _load_data():
     with open(data_file_name, "r", encoding="utf-8") as file:
         return json.load(file)
 
+
 def save_data(data):
     """
-    Safely saves the applicant data by writing to a temporary file 
+    Safely saves the applicant data by writing to a temporary file
     first so a crash during writing doesn't destroy the previous checkpoint
     """
 
@@ -71,6 +73,7 @@ def save_data(data):
         json.dump(data, file, indent=2, ensure_ascii=False)
 
     os.replace(temp_file, data_file_name)
+
 
 def _load_progress():
     """
@@ -82,6 +85,7 @@ def _load_progress():
 
     with open(progress_file_name, "r", encoding="utf-8") as file:
         return json.load(file)
+
 
 def _save_progress(last_completed_page, next_page, next_url, records):
     """
@@ -104,29 +108,35 @@ def _save_progress(last_completed_page, next_page, next_url, records):
 
     os.replace(temp_file, progress_file_name)
 
+
 def _initialize_chrome(url, port=chrome_port):
     """
     Launches an instance of Chrome so the user can complete
-    Cloudflare's normal verification manually; the remote 
-    debugging port is specified so that Selenium can later 
-    attach to the browser, and unnecessary chrome background 
+    Cloudflare's normal verification manually; the remote
+    debugging port is specified so that Selenium can later
+    attach to the browser, and unnecessary chrome background
     activity isn't started to speed up Selenium
     """
 
-    process = subprocess.Popen([
-        chrome_path,
-        f"--remote-debugging-port={port}",
-        f"--user-data-dir={chrome_profile}",
-        "--disable-background-networking",
-        "--disable-component-update",
-        "--disable-default-apps",
-        "--disable-extensions",
-        url,
-    ])
+    process = subprocess.Popen(
+        [
+            chrome_path,
+            f"--remote-debugging-port={port}",
+            f"--user-data-dir={chrome_profile}",
+            "--disable-background-networking",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--disable-extensions",
+            url,
+        ]
+    )
 
-    input("\nPlease complete Cloudflare verification and then enter any key to continue...\n")
+    input(
+        "\nPlease complete Cloudflare verification and then enter any key to continue...\n"
+    )
 
     return process
+
 
 def _commandeer_chrome(port=chrome_port):
     """
@@ -136,20 +146,18 @@ def _commandeer_chrome(port=chrome_port):
     """
 
     options = Options()
-    options.add_experimental_option(
-        "debuggerAddress",
-        f"127.0.0.1:{port}"
-    )
+    options.add_experimental_option("debuggerAddress", f"127.0.0.1:{port}")
 
     options.page_load_strategy = "eager"
 
     return webdriver.Chrome(options=options)
 
+
 def _scrape_survey_page(driver, url):
-    '''
+    """
     Scrapes the current surey page for prospective
     applicants to add to the database
-    '''
+    """
 
     driver.get(url)
     html = driver.page_source
@@ -173,11 +181,13 @@ def _scrape_survey_page(driver, url):
         gpa_match = re.search(r"GPA\s+([\d.]+)", text)
         term_match = re.search(r"(Spring|Summer|Fall|Winter)\s+\d{4}", text)
 
-        table_info.append({
-            "date_added": date_added,
-            "gpa": (gpa_match.group(1) if gpa_match else None),
-            "term": (term_match.group(0) if term_match else None),
-        })
+        table_info.append(
+            {
+                "date_added": date_added,
+                "gpa": (gpa_match.group(1) if gpa_match else None),
+                "term": (term_match.group(0) if term_match else None),
+            }
+        )
 
     result_links = soup.find_all("a", href=re.compile(r"^/result/\d+$"))
     results = [urljoin(url, link["href"]) for link in result_links]
@@ -191,6 +201,7 @@ def _scrape_survey_page(driver, url):
             break
 
     return (table_info, results, next_link)
+
 
 def _fetch_pages_in_browser(driver, urls):
     """
@@ -249,6 +260,7 @@ def _fetch_pages_in_browser(driver, urls):
 
     return driver.execute_async_script(script, urls)
 
+
 def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=None):
     """
     Parses a single applicant result page
@@ -261,13 +273,13 @@ def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=No
     if len(column_fields_html) < 10:
         raise ValueError("Unexpected result page structure")
 
-    item["university"] = (column_fields_html[0].get_text(" ", strip=True))
-    item["program_name"] = (column_fields_html[1].get_text(" ", strip=True))
-    item["degree_type"] = (column_fields_html[2].get_text(" ", strip=True))
-    item["nationality"] = (column_fields_html[3].get_text(" ", strip=True))
-    item["applicant_status"] = (column_fields_html[4].get_text(" ", strip=True))
+    item["university"] = column_fields_html[0].get_text(" ", strip=True)
+    item["program_name"] = column_fields_html[1].get_text(" ", strip=True)
+    item["degree_type"] = column_fields_html[2].get_text(" ", strip=True)
+    item["nationality"] = column_fields_html[3].get_text(" ", strip=True)
+    item["applicant_status"] = column_fields_html[4].get_text(" ", strip=True)
 
-    status_text = (column_fields_html[5].get_text(" ", strip=True))
+    status_text = column_fields_html[5].get_text(" ", strip=True)
     date_match = re.search(r"\d{2}/\d{2}/\d{4}", status_text)
 
     if date_match:
@@ -281,9 +293,9 @@ def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=No
         elif item["applicant_status"] == "Interview":
             item["interview_date"] = date_value
 
-    item["gre_score"] = (column_fields_html[7].get_text(" ", strip=True))
-    item["gre_v_score"] = (column_fields_html[8].get_text(" ", strip=True))
-    item["gre_aw"] = (column_fields_html[9].get_text(" ", strip=True))
+    item["gre_score"] = column_fields_html[7].get_text(" ", strip=True)
+    item["gre_v_score"] = column_fields_html[8].get_text(" ", strip=True)
+    item["gre_aw"] = column_fields_html[9].get_text(" ", strip=True)
 
     item["gpa"] = gpa
     item["start_term"] = start_term
@@ -291,14 +303,19 @@ def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=No
 
     if date_added:
         try:
-            item["date_added"] = datetime.strptime(date_added,"%b %d, %Y").strftime("%m/%d/%Y")
+            item["date_added"] = datetime.strptime(date_added, "%b %d, %Y").strftime(
+                "%m/%d/%Y"
+            )
         except ValueError:
             item["date_added"] = date_added
 
     if "Notes" in html and len(column_fields_html) > 10:
-        item["comments"] = (column_fields_html[10].get_text(" ", strip=True))
+        item["comments"] = column_fields_html[10].get_text(" ", strip=True)
 
-    return {key: (None if value == "Not provided" else value) for key, value in item.items()}
+    return {
+        key: (None if value == "Not provided" else value) for key, value in item.items()
+    }
+
 
 def _process_batch(driver, batch, existing_urls):
     """
@@ -307,10 +324,7 @@ def _process_batch(driver, batch, existing_urls):
 
     urls = [item["url"] for item in batch]
 
-    metadata = {
-        item["url"]: item
-        for item in batch
-    }
+    metadata = {item["url"]: item for item in batch}
 
     print(f"Fetching {len(urls)} result pages...")
 
@@ -330,22 +344,29 @@ def _process_batch(driver, batch, existing_urls):
         if result_url in existing_urls:
             continue
 
-        info = metadata.get(result_url,{})
+        info = metadata.get(result_url, {})
 
         try:
-            item = _scrape_result_page_html(html, result_url, info.get("date_added"), info.get("gpa"), info.get("term"))
+            item = _scrape_result_page_html(
+                html,
+                result_url,
+                info.get("date_added"),
+                info.get("gpa"),
+                info.get("term"),
+            )
         except Exception as e:
-            print(f"PARSE ERROR: {result_url}: {e}" )
+            print(f"PARSE ERROR: {result_url}: {e}")
             continue
 
         records.append(item)
         existing_urls.add(result_url)
 
-    elapsed = (time.perf_counter() - start_time)
+    elapsed = time.perf_counter() - start_time
 
     print(f"Added {len(records)} records in {elapsed:.2f}s")
 
     return records
+
 
 def scrape_data(survey_url, target_records=target_records):
     """
@@ -353,7 +374,7 @@ def scrape_data(survey_url, target_records=target_records):
     progress (if any exists) and then initializes a debug
     instance of chrome, which the user uses to manually
     verify any cloudflare prompts. Selenium is then attached
-    to the browser, and applicant data is scraped from the 
+    to the browser, and applicant data is scraped from the
     survey and individual results pages until the target
     of 50,000 entries has been reached
     """
@@ -396,7 +417,11 @@ def scrape_data(survey_url, target_records=target_records):
             print(f"SURVEY PAGE {page_number}")
 
             try:
-                (table_info, result_urls, next_url,) = _scrape_survey_page(driver, current_url)
+                (
+                    table_info,
+                    result_urls,
+                    next_url,
+                ) = _scrape_survey_page(driver, current_url)
 
             except Exception as e:
                 print()
@@ -428,25 +453,28 @@ def scrape_data(survey_url, target_records=target_records):
                         "term": None,
                     }
 
-                new_results.append({
-                    "url": result_url,
-                    "date_added": info["date_added"],
-                    "gpa": info["gpa"],
-                    "term": info["term"],
-                })
+                new_results.append(
+                    {
+                        "url": result_url,
+                        "date_added": info["date_added"],
+                        "gpa": info["gpa"],
+                        "term": info["term"],
+                    }
+                )
 
-            print(
-                f"New results: "
-                f"{len(new_results)}"
-            )
+            print(f"New results: " f"{len(new_results)}")
 
             for start in range(0, len(new_results), batch_size):
                 if len(data) >= target_records:
                     break
 
-                batch = new_results[start:start + batch_size]
-                records = _process_batch(driver, batch, existing_urls,)
-                remaining = (target_records - len(data))
+                batch = new_results[start : start + batch_size]
+                records = _process_batch(
+                    driver,
+                    batch,
+                    existing_urls,
+                )
+                remaining = target_records - len(data)
 
                 if len(records) > remaining:
                     records = records[:remaining]

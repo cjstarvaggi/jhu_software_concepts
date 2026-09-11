@@ -26,17 +26,22 @@ MODEL_FILE = os.getenv(
     "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
 )
 
-N_THREADS = 2 # int(os.getenv("N_THREADS", str(os.cpu_count() or 2)))
-N_CTX = 2048 # int(os.getenv("N_CTX", "2048"))
-N_GPU_LAYERS = -1 #int(os.getenv("N_GPU_LAYERS", "0"))  # 0 → CPU-only
+N_THREADS = 2  # int(os.getenv("N_THREADS", str(os.cpu_count() or 2)))
+N_CTX = 2048  # int(os.getenv("N_CTX", "2048"))
+N_GPU_LAYERS = -1  # int(os.getenv("N_GPU_LAYERS", "0"))  # 0 → CPU-only
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CANON_UNIS_PATH = os.getenv("CANON_UNIS_PATH", os.path.join(BASE_DIR, "canon_universities.txt"))
-CANON_PROGS_PATH = os.getenv("CANON_PROGS_PATH", os.path.join(BASE_DIR, "canon_programs.txt"))
+CANON_UNIS_PATH = os.getenv(
+    "CANON_UNIS_PATH", os.path.join(BASE_DIR, "canon_universities.txt")
+)
+CANON_PROGS_PATH = os.getenv(
+    "CANON_PROGS_PATH", os.path.join(BASE_DIR, "canon_programs.txt")
+)
 
 # Precompiled, non-greedy JSON object matcher to tolerate chatter around JSON
 JSON_OBJ_RE = re.compile(r"\{.*?\}", re.DOTALL)
+
 
 # ---------------- Canonical lists + abbrev maps ----------------
 def _read_lines(path: str) -> List[str]:
@@ -66,20 +71,13 @@ COMMON_UNI_FIXES: Dict[str, str] = {
     "Friedrich-Schiller Universität Jenna": "Friedrich-Schiller Universität Jena",
     "Feerdowsi University of Mashhad": "Ferdowsi University of Mashhad",
     "University of Dhaaka": "University of Dhaka",
-    "Islamic Azad University, Farsi Science & Research Branch":
-        "Islamic Azad University, Fars Science & Research Branch",
-    "Feederal University of Technology, Minna":
-        "Federal University of Technology, Minna",
-    "LaDoke Akintola University of Technology":
-        "Ladoke Akintola University of Technology",
-    "Beijiing Normal University":
-        "Beijing Normal University",
-    "University of Guilañ":
-        "University of Guilan",
-    "University of South Floridaa":
-        "University of South Florida",
-    "AbduS Salam International Centre for Theoretical Physics":
-        "Abdus Salam International Centre for Theoretical Physics",
+    "Islamic Azad University, Farsi Science & Research Branch": "Islamic Azad University, Fars Science & Research Branch",
+    "Feederal University of Technology, Minna": "Federal University of Technology, Minna",
+    "LaDoke Akintola University of Technology": "Ladoke Akintola University of Technology",
+    "Beijiing Normal University": "Beijing Normal University",
+    "University of Guilañ": "University of Guilan",
+    "University of South Floridaa": "University of South Florida",
+    "AbduS Salam International Centre for Theoretical Physics": "Abdus Salam International Centre for Theoretical Physics",
 }
 
 COMMON_PROG_FIXES: Dict[str, str] = {
@@ -89,14 +87,10 @@ COMMON_PROG_FIXES: Dict[str, str] = {
     "Strategiic Management": "Strategic Management",
     "AeroNautiics & Astronautics": "Aeronautics & Astronautics",
     "AeroNautiics & AstroNautics": "Aeronautics & Astronautics",
-    "Diné Culture and Languaage Sustainability":
-        "Diné Culture and Language Sustainability",
-    "Mathematicas in Data Science":
-        "Mathematics in Data Science",
-    "Mathematic in Data Science":
-        "Mathematics in Data Science",
-    "EUROP EANFORSY":
-        "EUROPEAN FORESTRY",
+    "Diné Culture and Languaage Sustainability": "Diné Culture and Language Sustainability",
+    "Mathematicas in Data Science": "Mathematics in Data Science",
+    "Mathematic in Data Science": "Mathematics in Data Science",
+    "EUROP EANFORSY": "EUROPEAN FORESTRY",
 }
 
 # ---------------- Few-shot prompt ----------------
@@ -105,20 +99,16 @@ SYSTEM_PROMPT = (
     "You are a conservative data-cleaning assistant. "
     "Your job is to standardize degree program and university names "
     "without inventing, guessing, or changing valid names.\n\n"
-
     "Rules:\n"
     "1. The input contains two independent fields:\n"
     "   - `program_name`\n"
     "   - `university`\n\n"
-
     "2. Clean each field independently. Never use the university to "
     "guess or modify the program, and never use the program to guess "
     "or modify the university.\n\n"
-
     "3. Preserve the original wording whenever it appears to be a "
     "valid name. Do NOT rewrite a proper noun merely because it looks "
     "unusual or unfamiliar.\n\n"
-
     "4. NEVER invent spelling changes. In particular, do not add, "
     "remove, duplicate, or substitute letters in proper names.\n"
     "   Examples:\n"
@@ -130,33 +120,25 @@ SYSTEM_PROMPT = (
     "   - `Beijing` must NOT become `Beijiing`.\n"
     "   - `Language` must NOT become `Languaage`.\n"
     "   - `Aeronautics` must NOT become `AeroNautiics`.\n\n"
-
     "5. Do NOT substitute one institution for another. "
     "For example, `IIT Delhi` must NOT become `IIIT Delhi`.\n\n"
-
     "6. Do not invent words, remove meaningful words, or add words "
     "unless the change is an obvious formatting correction.\n\n"
-
     "7. Correct only clear formatting issues such as:\n"
     "   - extra whitespace\n"
     "   - inconsistent capitalization\n"
     "   - obvious capitalization of a proper name\n"
     "   - obvious abbreviation expansion when unambiguous\n\n"
-
     "8. Parenthetical text has already been removed from the input. "
     "Do not recreate it.\n\n"
-
     "9. A valid university or program does NOT have to appear in a "
     "provided canonical list. Do not reject a name just because it is "
     "not in the canonical list.\n\n"
-
     "10. If a value is clearly invalid, meaningless, or cannot be "
     "identified as a specific program or university, return `Unknown` "
     "for that field (such as 'All school' or 'Hogwartz').\n\n"
-
     "11. When uncertain between changing the input and preserving it, "
     "ALWAYS preserve the original input.\n\n"
-
     "12. Return JSON ONLY with exactly these keys:\n"
     "   `standardized_program`, `standardized_university`\n"
 )
@@ -248,6 +230,7 @@ def _canonical_match(value: str, canonical_values: List[str]) -> str | None:
 
     return None
 
+
 def _remove_parenthetical(value: str) -> str:
     """
     Removes parenthetical text from a program/university name.
@@ -262,6 +245,7 @@ def _remove_parenthetical(value: str) -> str:
     value = str(value or "")
     value = re.sub(r"\s*\([^)]*\)", "", value)
     return " ".join(value.split()).strip()
+
 
 def _post_normalize_program(prog: str) -> str:
     """Apply common fixes, title case, then canonical/fuzzy mapping."""
@@ -297,11 +281,17 @@ def _post_normalize_university(uni: str) -> str:
     canonical_match = _canonical_match(u, CANON_UNIS)
     if canonical_match != None:
         return canonical_match
-    
+
     match = _best_match(u, CANON_UNIS, cutoff=0.92)
     return match or u or "Unknown"
 
-def _call_llm(program_name: str, university: str, normalize_program: bool = True, normalize_university: bool = True) -> Dict[str, str]:
+
+def _call_llm(
+    program_name: str,
+    university: str,
+    normalize_program: bool = True,
+    normalize_university: bool = True,
+) -> Dict[str, str]:
     """Query the tiny LLM while only allowing requested fields to change."""
 
     program_name = _remove_parenthetical(program_name)
@@ -309,8 +299,12 @@ def _call_llm(program_name: str, university: str, normalize_program: bool = True
 
     llm = _load_llm()
 
-    program_status = ("MAY BE STANDARDIZED" if normalize_program else "VERIFIED - DO NOT CHANGE")
-    university_status = ("MAY BE STANDARDIZED" if normalize_university else "VERIFIED - DO NOT CHANGE")
+    program_status = (
+        "MAY BE STANDARDIZED" if normalize_program else "VERIFIED - DO NOT CHANGE"
+    )
+    university_status = (
+        "MAY BE STANDARDIZED" if normalize_university else "VERIFIED - DO NOT CHANGE"
+    )
 
     system_prompt = SYSTEM_PROMPT + (
         f"\n\nCurrent field permissions:\n"
