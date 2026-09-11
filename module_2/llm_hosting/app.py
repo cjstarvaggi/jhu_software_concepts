@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Flask + tiny local LLM standardizer with incremental JSONL CLI output."""
 
 from __future__ import annotations
@@ -8,6 +7,7 @@ import os
 import re
 import sys
 import difflib
+
 from typing import Any, Dict, List, Tuple
 
 from flask import Flask, jsonify, request
@@ -26,12 +26,14 @@ MODEL_FILE = os.getenv(
     "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
 )
 
-N_THREADS = int(os.getenv("N_THREADS", str(os.cpu_count() or 2)))
-N_CTX = int(os.getenv("N_CTX", "2048"))
-N_GPU_LAYERS = int(os.getenv("N_GPU_LAYERS", "0"))  # 0 → CPU-only
+N_THREADS = 2 # int(os.getenv("N_THREADS", str(os.cpu_count() or 2)))
+N_CTX = 2048 # int(os.getenv("N_CTX", "2048"))
+N_GPU_LAYERS = -1 #int(os.getenv("N_GPU_LAYERS", "0"))  # 0 → CPU-only
 
-CANON_UNIS_PATH = os.getenv("CANON_UNIS_PATH", "canon_universities.txt")
-CANON_PROGS_PATH = os.getenv("CANON_PROGS_PATH", "canon_programs.txt")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CANON_UNIS_PATH = os.getenv("CANON_UNIS_PATH", os.path.join(BASE_DIR, "canon_universities.txt"))
+CANON_PROGS_PATH = os.getenv("CANON_PROGS_PATH", os.path.join(BASE_DIR, "canon_programs.txt"))
 
 # Precompiled, non-greedy JSON object matcher to tolerate chatter around JSON
 JSON_OBJ_RE = re.compile(r"\{.*?\}", re.DOTALL)
@@ -60,49 +62,132 @@ COMMON_UNI_FIXES: Dict[str, str] = {
     "Mcgill University": "McGill University",
     # Normalize 'Of' → 'of'
     "University Of British Columbia": "University of British Columbia",
+    # Observed LLM spelling/capitalization errors
+    "Friedrich-Schiller Universität Jenna": "Friedrich-Schiller Universität Jena",
+    "Feerdowsi University of Mashhad": "Ferdowsi University of Mashhad",
+    "University of Dhaaka": "University of Dhaka",
+    "Islamic Azad University, Farsi Science & Research Branch":
+        "Islamic Azad University, Fars Science & Research Branch",
+    "Feederal University of Technology, Minna":
+        "Federal University of Technology, Minna",
+    "LaDoke Akintola University of Technology":
+        "Ladoke Akintola University of Technology",
+    "Beijiing Normal University":
+        "Beijing Normal University",
+    "University of Guilañ":
+        "University of Guilan",
+    "University of South Floridaa":
+        "University of South Florida",
+    "AbduS Salam International Centre for Theoretical Physics":
+        "Abdus Salam International Centre for Theoretical Physics",
 }
 
 COMMON_PROG_FIXES: Dict[str, str] = {
     "Mathematic": "Mathematics",
     "Info Studies": "Information Studies",
+    # Observed LLM spelling errors
+    "Strategiic Management": "Strategic Management",
+    "AeroNautiics & Astronautics": "Aeronautics & Astronautics",
+    "AeroNautiics & AstroNautics": "Aeronautics & Astronautics",
+    "Diné Culture and Languaage Sustainability":
+        "Diné Culture and Language Sustainability",
+    "Mathematicas in Data Science":
+        "Mathematics in Data Science",
+    "Mathematic in Data Science":
+        "Mathematics in Data Science",
+    "EUROP EANFORSY":
+        "EUROPEAN FORESTRY",
 }
 
 # ---------------- Few-shot prompt ----------------
+
 SYSTEM_PROMPT = (
-    "You are a data cleaning assistant. Standardize degree program and university "
-    "names.\n\n"
+    "You are a conservative data-cleaning assistant. "
+    "Your job is to standardize degree program and university names "
+    "without inventing, guessing, or changing valid names.\n\n"
+
     "Rules:\n"
-    "- Input provides a single string under key `program` that may contain both "
-    "program and university.\n"
-    "- Split into (program name, university name).\n"
-    "- Trim extra spaces and commas.\n"
-    '- Expand obvious abbreviations (e.g., "McG" -> "McGill University", '
-    '"UBC" -> "University of British Columbia").\n'
-    "- Use Title Case for program; use official capitalization for university "
-    "names (e.g., \"University of X\").\n"
-    '- Ensure correct spelling (e.g., "McGill", not "McGiill").\n'
-    '- If university cannot be inferred, return "Unknown".\n\n'
-    "Return JSON ONLY with keys:\n"
-    "  standardized_program, standardized_university\n"
+    "1. The input contains two independent fields:\n"
+    "   - `program_name`\n"
+    "   - `university`\n\n"
+
+    "2. Clean each field independently. Never use the university to "
+    "guess or modify the program, and never use the program to guess "
+    "or modify the university.\n\n"
+
+    "3. Preserve the original wording whenever it appears to be a "
+    "valid name. Do NOT rewrite a proper noun merely because it looks "
+    "unusual or unfamiliar.\n\n"
+
+    "4. NEVER invent spelling changes. In particular, do not add, "
+    "remove, duplicate, or substitute letters in proper names.\n"
+    "   Examples:\n"
+    "   - `Jena` must NOT become `Jenna`.\n"
+    "   - `Ferdowsi` must NOT become `Feerdowsi`.\n"
+    "   - `Dhaka` must NOT become `Dhaaka`.\n"
+    "   - `Fars` must NOT become `Farsi`.\n"
+    "   - `Federal` must NOT become `Feederal`.\n"
+    "   - `Beijing` must NOT become `Beijiing`.\n"
+    "   - `Language` must NOT become `Languaage`.\n"
+    "   - `Aeronautics` must NOT become `AeroNautiics`.\n\n"
+
+    "5. Do NOT substitute one institution for another. "
+    "For example, `IIT Delhi` must NOT become `IIIT Delhi`.\n\n"
+
+    "6. Do not invent words, remove meaningful words, or add words "
+    "unless the change is an obvious formatting correction.\n\n"
+
+    "7. Correct only clear formatting issues such as:\n"
+    "   - extra whitespace\n"
+    "   - inconsistent capitalization\n"
+    "   - obvious capitalization of a proper name\n"
+    "   - obvious abbreviation expansion when unambiguous\n\n"
+
+    "8. Parenthetical text has already been removed from the input. "
+    "Do not recreate it.\n\n"
+
+    "9. A valid university or program does NOT have to appear in a "
+    "provided canonical list. Do not reject a name just because it is "
+    "not in the canonical list.\n\n"
+
+    "10. If a value is clearly invalid, meaningless, or cannot be "
+    "identified as a specific program or university, return `Unknown` "
+    "for that field (such as 'All school' or 'Hogwartz').\n\n"
+
+    "11. When uncertain between changing the input and preserving it, "
+    "ALWAYS preserve the original input.\n\n"
+
+    "12. Return JSON ONLY with exactly these keys:\n"
+    "   `standardized_program`, `standardized_university`\n"
 )
+
 
 FEW_SHOTS: List[Tuple[Dict[str, str], Dict[str, str]]] = [
     (
-        {"program": "Information Studies, McGill University"},
+        {
+            "program_name": "Information Studies",
+            "university": "McGill University",
+        },
         {
             "standardized_program": "Information Studies",
             "standardized_university": "McGill University",
         },
     ),
     (
-        {"program": "Information, McG"},
+        {
+            "program_name": "Information",
+            "university": "McG",
+        },
         {
             "standardized_program": "Information Studies",
             "standardized_university": "McGill University",
         },
     ),
     (
-        {"program": "Mathematics, University Of British Columbia"},
+        {
+            "program_name": "Mathematics",
+            "university": "University Of British Columbia",
+        },
         {
             "standardized_program": "Mathematics",
             "standardized_university": "University of British Columbia",
@@ -110,7 +195,7 @@ FEW_SHOTS: List[Tuple[Dict[str, str], Dict[str, str]]] = [
     ),
 ]
 
-_LLM: Llama | None = None
+_LLM = None
 
 
 def _load_llm() -> Llama:
@@ -123,8 +208,6 @@ def _load_llm() -> Llama:
         repo_id=MODEL_REPO,
         filename=MODEL_FILE,
         local_dir="models",
-        local_dir_use_symlinks=False,
-        force_filename=MODEL_FILE,
     )
 
     _LLM = Llama(
@@ -137,31 +220,6 @@ def _load_llm() -> Llama:
     return _LLM
 
 
-def _split_fallback(text: str) -> Tuple[str, str]:
-    """Simple, rules-first parser if the model returns non-JSON."""
-    s = re.sub(r"\s+", " ", (text or "")).strip().strip(",")
-    parts = [p.strip() for p in re.split(r",| at | @ ", s) if p.strip()]
-    prog = parts[0] if parts else ""
-    uni = parts[1] if len(parts) > 1 else ""
-
-    # High-signal expansions
-    if re.fullmatch(r"(?i)mcg(ill)?(\.)?", uni or ""):
-        uni = "McGill University"
-    if re.fullmatch(
-        r"(?i)(ubc|u\.?b\.?c\.?|university of british columbia)",
-        uni or "",
-    ):
-        uni = "University of British Columbia"
-
-    # Title-case program; normalize 'Of' → 'of' for universities
-    prog = prog.title()
-    if uni:
-        uni = re.sub(r"\bOf\b", "of", uni.title())
-    else:
-        uni = "Unknown"
-    return prog, uni
-
-
 def _best_match(name: str, candidates: List[str], cutoff: float = 0.86) -> str | None:
     """Fuzzy match via difflib (lightweight, Replit-friendly)."""
     if not name or not candidates:
@@ -170,14 +228,52 @@ def _best_match(name: str, candidates: List[str], cutoff: float = 0.86) -> str |
     return matches[0] if matches else None
 
 
+def _comparison_key(value: str) -> str:
+    """Creates a key that allows for comparing entries to the canonical list"""
+    value = str(value or "")
+    value = " ".join(value.split())
+    return value.lower()
+
+
+def _canonical_match(value: str, canonical_values: List[str]) -> str | None:
+    """Checks to see if a match exists in the canonical lists"""
+    key = _comparison_key(value)
+
+    if not key:
+        return None
+
+    for canonical in canonical_values:
+        if _comparison_key(canonical) == key:
+            return canonical
+
+    return None
+
+def _remove_parenthetical(value: str) -> str:
+    """
+    Removes parenthetical text from a program/university name.
+
+    Examples:
+        'University of Illinois Chicago (UIC)'
+            -> 'University of Illinois Chicago'
+
+        'University of Toronto (Pissmaster)'
+            -> 'University of Toronto'
+    """
+    value = str(value or "")
+    value = re.sub(r"\s*\([^)]*\)", "", value)
+    return " ".join(value.split()).strip()
+
 def _post_normalize_program(prog: str) -> str:
     """Apply common fixes, title case, then canonical/fuzzy mapping."""
     p = (prog or "").strip()
     p = COMMON_PROG_FIXES.get(p, p)
-    p = p.title()
     if p in CANON_PROGS:
         return p
-    match = _best_match(p, CANON_PROGS, cutoff=0.84)
+
+    canonical_match = _canonical_match(p, CANON_PROGS)
+    if canonical_match != None:
+        return canonical_match
+    match = _best_match(p, CANON_PROGS, cutoff=0.90)
     return match or p
 
 
@@ -194,36 +290,68 @@ def _post_normalize_university(uni: str) -> str:
     # Common spelling fixes
     u = COMMON_UNI_FIXES.get(u, u)
 
-    # Normalize 'Of' → 'of'
-    if u:
-        u = re.sub(r"\bOf\b", "of", u.title())
-
     # Canonical or fuzzy map
     if u in CANON_UNIS:
         return u
-    match = _best_match(u, CANON_UNIS, cutoff=0.86)
+
+    canonical_match = _canonical_match(u, CANON_UNIS)
+    if canonical_match != None:
+        return canonical_match
+    
+    match = _best_match(u, CANON_UNIS, cutoff=0.92)
     return match or u or "Unknown"
 
+def _call_llm(program_name: str, university: str, normalize_program: bool = True, normalize_university: bool = True) -> Dict[str, str]:
+    """Query the tiny LLM while only allowing requested fields to change."""
 
-def _call_llm(program_text: str) -> Dict[str, str]:
-    """Query the tiny LLM and return standardized fields."""
+    program_name = _remove_parenthetical(program_name)
+    university = _remove_parenthetical(university)
+
     llm = _load_llm()
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    program_status = ("MAY BE STANDARDIZED" if normalize_program else "VERIFIED - DO NOT CHANGE")
+    university_status = ("MAY BE STANDARDIZED" if normalize_university else "VERIFIED - DO NOT CHANGE")
+
+    system_prompt = SYSTEM_PROMPT + (
+        f"\n\nCurrent field permissions:\n"
+        f"- program_name: {program_status}\n"
+        f"- university: {university_status}\n"
+    )
+
+    messages = [{"role": "system", "content": system_prompt}]
+
     for x_in, x_out in FEW_SHOTS:
         messages.append(
-            {"role": "user", "content": json.dumps(x_in, ensure_ascii=False)}
+            {
+                "role": "user",
+                "content": json.dumps(
+                    x_in,
+                    ensure_ascii=False,
+                ),
+            }
         )
         messages.append(
             {
                 "role": "assistant",
-                "content": json.dumps(x_out, ensure_ascii=False),
+                "content": json.dumps(
+                    x_out,
+                    ensure_ascii=False,
+                ),
             }
         )
+
     messages.append(
         {
             "role": "user",
-            "content": json.dumps({"program": program_text}, ensure_ascii=False),
+            "content": json.dumps(
+                {
+                    "program_name": program_name,
+                    "university": university,
+                    "program_permission": program_status,
+                    "university_permission": university_status,
+                },
+                ensure_ascii=False,
+            ),
         }
     )
 
@@ -235,16 +363,28 @@ def _call_llm(program_text: str) -> Dict[str, str]:
     )
 
     text = (out["choices"][0]["message"]["content"] or "").strip()
+
     try:
         match = JSON_OBJ_RE.search(text)
+
         obj = json.loads(match.group(0) if match else text)
         std_prog = str(obj.get("standardized_program", "")).strip()
         std_uni = str(obj.get("standardized_university", "")).strip()
-    except Exception:
-        std_prog, std_uni = _split_fallback(program_text)
 
-    std_prog = _post_normalize_program(std_prog)
-    std_uni = _post_normalize_university(std_uni)
+    except Exception:
+        std_prog = program_name.strip() if program_name else "Unknown"
+        std_uni = university.strip() if university else "Unknown"
+
+    if not normalize_program:
+        std_prog = program_name.strip() if program_name else "Unknown"
+    else:
+        std_prog = _post_normalize_program(std_prog)
+
+    if not normalize_university:
+        std_uni = university.strip() if university else "Unknown"
+    else:
+        std_uni = _post_normalize_university(std_uni)
+
     return {
         "standardized_program": std_prog,
         "standardized_university": std_uni,
@@ -274,8 +414,19 @@ def standardize() -> Any:
 
     out: List[Dict[str, Any]] = []
     for row in rows:
-        program_text = (row or {}).get("program") or ""
-        result = _call_llm(program_text)
+        program_name = (row or {}).get("program_name") or ""
+        university = (row or {}).get("university") or ""
+
+        canonical_program = _canonical_match(program_name, CANON_PROGS)
+        canonical_university = _canonical_match(university, CANON_UNIS)
+
+        result = _call_llm(
+            program_name=program_name,
+            university=university,
+            normalize_program=canonical_program is None,
+            normalize_university=canonical_university is None,
+        )
+
         row["llm-generated-program"] = result["standardized_program"]
         row["llm-generated-university"] = result["standardized_university"]
         out.append(row)
@@ -303,8 +454,19 @@ def _cli_process_file(
 
     try:
         for row in rows:
-            program_text = (row or {}).get("program") or ""
-            result = _call_llm(program_text)
+            program_name = (row or {}).get("program_name") or ""
+            university = (row or {}).get("university") or ""
+
+            canonical_program = _canonical_match(program_name, CANON_PROGS)
+            canonical_university = _canonical_match(university, CANON_UNIS)
+
+            result = _call_llm(
+                program_name=program_name,
+                university=university,
+                normalize_program=canonical_program is None,
+                normalize_university=canonical_university is None,
+            )
+
             row["llm-generated-program"] = result["standardized_program"]
             row["llm-generated-university"] = result["standardized_university"]
 

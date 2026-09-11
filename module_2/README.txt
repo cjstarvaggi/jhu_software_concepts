@@ -25,6 +25,28 @@ allows the scraper to resume from the last completed survey page. Data and
 progress are saved using temporary files and checkpoints to reduce the 
 risk of losing progress.
 
+# LLM STANDARDIZER UPDATES
+
+The original standardizer was updated to make normalization more reliable and
+prevent unnecessary LLM changes. Canonical university and program lists are
+now loaded relative to the script directory, and case/whitespace-insensitive
+canonical matching was added so existing valid entries are preserved.
+
+Post-processing was expanded with additional corrections for common LLM
+spelling errors, tighter fuzzy-match thresholds, and parenthetical text
+removal. Program and university values are now normalized independently rather
+than being treated as one combined field.
+
+The LLM prompt was rewritten to be more conservative, instructing the model
+to preserve valid names and avoid inventing spelling changes. Canonical matches
+are now marked as verified and protected from LLM modification; only fields
+that do not match the canonical lists are allowed to be standardized.
+
+The LLM hosting configuration was also changed from CPU-only execution to GPU
+acceleration with `N_GPU_LAYERS = -1`. The model now uses a fixed 2 threads and
+2048-token context, while the existing Hugging Face GGUF download and
+in-memory model caching remain in place.
+
 # KNOWN BUGS
 
 The scraper depends on The Grad Cafe's current HTML structure; as such, changes 

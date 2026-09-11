@@ -34,15 +34,29 @@ python app.py --file cleaned_applicant_data.json --stdout > full_out.jsonl
 
 - `MODEL_REPO` (default: `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`)
 - `MODEL_FILE` (default: `tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf`)
-- `N_THREADS` (default: CPU count)
-- `N_CTX` (default: 2048)
-- `N_GPU_LAYERS` (default: 0 — CPU only)
+- `N_THREADS` (2)
+- `N_CTX` (22048)
+- `N_GPU_LAYERS` (-1 — GPU layers enabled)
 
 If memory is tight on Replit, try:
 ```bash
 export MODEL_FILE=tinyllama-1.1b-chat-v1.0.Q3_K_M.gguf
 ```
 
+## Standardization changes
+
+- Canonical matches are case/whitespace-insensitive and preserve the canonical spelling.
+- Program and university fields are standardized independently.
+- Common LLM spelling errors are corrected before fuzzy matching.
+- Fuzzy matching uses stricter thresholds to avoid incorrect substitutions.
+- Parenthetical text is removed before LLM processing.
+- Values already found in the canonical lists are treated as verified and are not changed by the LLM.
+- The LLM is instructed to preserve valid names and return Unknown only for clearly invalid values.
+- If a field is not verified, only that field is allowed to be normalized.
+
 ## Notes
-- Strict JSON prompting + a rules-first fallback keep tiny models on task.
-- Extend the few-shots and the fallback patterns in `app.py` for higher accuracy on your dataset.
+- Strict JSON prompting + post-processing keep the small model on task.
+- The TinyLlama GGUF model runs locally through llama-cpp-python.
+- The model uses a 2048-token context, 2 threads, and GPU layer offloading.
+- The model is loaded once and reused after the first request.
+- Extend the canonical lists and correction patterns in app.py for higher accuracy on your dataset.
