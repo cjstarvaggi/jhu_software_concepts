@@ -5,6 +5,14 @@ Module: 2
 Assignment: Web Scraping
 Due Date: 09/13/2026
 
+# RUN INSTRUCTIONS
+
+1. Extract the files
+2. pip install -r requirements.txt
+3. run robots_check.py, 
+4. run scrape.py
+5. run clean.py
+
 # APPROACH
 
 robots_check.py uses urllib.robotparser to check whether the site's
@@ -59,7 +67,7 @@ in-memory model caching remain in place.
 # LIMITATIONS
 
 The scraper requires Google Chrome and a Windows-specific Chrome executable
-path; Cloudflare verification requires manual interaction.
+path; Cloudflare verification requires a single initial manual interaction.
 
 # KNOWN BUGS
 
@@ -68,3 +76,15 @@ to the site's page layout, field ordering, or pagination could cause incorrect
 or missing data. The result parser also relies on fixed <dd> element positions;
 a more robust version would identify fields by their labels.
 
+The GPU acceleration settings utilized to offload additional threads may not
+be compatible with other machines; this can be resolved be changing 
+N_GPU_LAYERS back to 0 for CPU-only processing, though it will significantly
+slow down the process.
+
+Whilst some fine-tuning of the model was able to fix some of the original 
+LLM standardization issues, some may undoubtedly persist leading to minor
+spelling errors in some llm generated json fields.
+
+In some instances, running the scraper for extended periods of time would lead 
+the current chrome webpage to crash; the scraper was written to allow a manual
+reload within five seconds of this happening.
