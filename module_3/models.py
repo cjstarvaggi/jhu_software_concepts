@@ -25,7 +25,8 @@ Base = declarative_base()
 
 class Applicant(Base):
     """
-    SQLAlchemy model for the existing applicants table.
+    This class creates a SQLAlchemy model
+    for the existing applicants table.
     """
 
     __tablename__ = "applicants"
