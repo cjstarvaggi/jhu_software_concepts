@@ -92,7 +92,7 @@ INSERT_SQL = """
 """
 
 
-def clean_text(value):
+def _clean_text(value):
     """
     Converts missing and blank values to None.
     """
@@ -107,12 +107,12 @@ def clean_text(value):
     return value
 
 
-def clean_float(value):
+def _clean_float(value):
     """
     Converts numeric values to floats, or None when
     they are missing or invalid.
     """
-    value = clean_text(value)
+    value = _clean_text(value)
 
     if value is None:
         return None
@@ -123,12 +123,12 @@ def clean_float(value):
         return None
 
 
-def parse_date(value):
+def _parse_date(value):
     """
     Converts MM/DD/YYYY strings into Python date
     objects.
     """
-    value = clean_text(value)
+    value = _clean_text(value)
 
     if value is None:
         return None
@@ -139,13 +139,13 @@ def parse_date(value):
         return None
 
 
-def get_p_id(url):
+def _get_p_id(url):
     """
     Creates a unique id from the Grad Cafe result url
     by stripping the page id and converting it to an
     integer.
     """
-    url = clean_text(url)
+    url = _clean_text(url)
 
     if not url:
         return None
@@ -156,34 +156,34 @@ def get_p_id(url):
         return None
 
 
-def transform_record(applicant):
+def _transform_record(applicant):
     """
     Transforms a dictionary from the JSON
     file into one compatible with the database
     schema.
     """
-    url = clean_text(applicant.get("url"))
-    p_id = get_p_id(url)
+    url = _clean_text(applicant.get("url"))
+    p_id = _get_p_id(url)
 
     if p_id is None:
         return None
 
     return {
         "p_id": p_id,
-        "program": clean_text(applicant.get("program_name")),
-        "comments": clean_text(applicant.get("comments")),
-        "date_added": parse_date(applicant.get("date_added")),
+        "program": _clean_text(applicant.get("program_name")),
+        "comments": _clean_text(applicant.get("comments")),
+        "date_added": _parse_date(applicant.get("date_added")),
         "url": url,
-        "status": clean_text(applicant.get("applicant_status")),
-        "term": clean_text(applicant.get("start_term")),
-        "us_or_international": clean_text(applicant.get("nationality")),
-        "gpa": clean_float(applicant.get("gpa")),
-        "gre": clean_float(applicant.get("gre_score")),
-        "gre_v": clean_float(applicant.get("gre_v_score")),
-        "gre_aw": clean_float(applicant.get("gre_aw")),
-        "degree": clean_text(applicant.get("degree_type")),
-        "llm_generated_program": clean_text(applicant.get("llm-generated-program")),
-        "llm_generated_university": clean_text(
+        "status": _clean_text(applicant.get("applicant_status")),
+        "term": _clean_text(applicant.get("start_term")),
+        "us_or_international": _clean_text(applicant.get("nationality")),
+        "gpa": _clean_float(applicant.get("gpa")),
+        "gre": _clean_float(applicant.get("gre_score")),
+        "gre_v": _clean_float(applicant.get("gre_v_score")),
+        "gre_aw": _clean_float(applicant.get("gre_aw")),
+        "degree": _clean_text(applicant.get("degree_type")),
+        "llm_generated_program": _clean_text(applicant.get("llm-generated-program")),
+        "llm_generated_university": _clean_text(
             applicant.get("llm-generated-university")
         ),
     }
@@ -219,7 +219,7 @@ def main():
         with conn.cursor() as cursor:
             cursor.execute(CREATE_TABLE_SQL)
             for applicant in applicants:
-                record = transform_record(applicant)
+                record = _transform_record(applicant)
 
                 if record is None:
                     skipped += 1
