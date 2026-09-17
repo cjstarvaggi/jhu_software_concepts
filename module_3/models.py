@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from sqlalchemy import Column, Date, Integer, Numeric, Text, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-
 load_dotenv()
 
 
@@ -15,8 +14,7 @@ DB_USER = os.getenv("POSTGRES_USER")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
 DATABASE_URL = (
-    f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}" f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 

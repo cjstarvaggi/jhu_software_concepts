@@ -3,7 +3,6 @@ import os
 import psycopg
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 
@@ -16,7 +15,7 @@ DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
 def _get_connection():
     """
-    Creates and returns the PostgreSQL database 
+    Creates and returns the PostgreSQL database
     connection.
     """
     return psycopg.connect(
@@ -31,7 +30,7 @@ def _get_connection():
 def _submit_query(conn, sql):
     """
     Submits a query to the applicants table in the
-    PostgreSQL database through the existing 
+    PostgreSQL database through the existing
     connection.
     """
     with conn.cursor() as cursor:
@@ -58,7 +57,7 @@ def _question_1(conn):
 def _question_2(conn):
     """
     Question 2:
-    Among entries that provide a nationality classification, 
+    Among entries that provide a nationality classification,
     what percentage are international students?
     """
 
@@ -123,7 +122,7 @@ def _question_3(conn):
 def _question_4(conn):
     """
     Question 4:
-    What is the average GPA of American applicants 
+    What is the average GPA of American applicants
     who applied for Fall 2026?
     """
 
@@ -167,7 +166,7 @@ def _question_5(conn):
 def _question_6(conn):
     """
     Question 6:
-    What is the average GPA of accepted applicants 
+    What is the average GPA of accepted applicants
     who applied for Fall 2026?
     """
 
@@ -186,7 +185,7 @@ def _question_6(conn):
 def _question_7(conn):
     """
     Question 7:
-    How many entries are from applicants who applied to Johns Hopkins 
+    How many entries are from applicants who applied to Johns Hopkins
     University for a master's degree in Computer Science?
     """
 
@@ -204,8 +203,8 @@ def _question_7(conn):
 def _question_8(conn):
     """
     Question 8:
-    How many Fall 2026 entries are acceptances from applicants 
-    applying for a PhD in Computer Science at one of the 
+    How many Fall 2026 entries are acceptances from applicants
+    applying for a PhD in Computer Science at one of the
     following universities?
     """
 
@@ -225,8 +224,8 @@ def _question_8(conn):
 def _question_9(conn):
     """
     Question 9:
-    How many Fall 2026 entries are acceptances from applicants 
-    applying for a PhD in Computer Science at one of the 
+    How many Fall 2026 entries are acceptances from applicants
+    applying for a PhD in Computer Science at one of the
     following universities (using llm adjusted values)?
     """
 
@@ -258,7 +257,7 @@ def _question_9(conn):
 def _question_10(conn):
     """
     Question 10:
-    How many entries are applicants 
+    How many entries are applicants
     applying for a Physics PhD
     at West Virginia University?
     """
@@ -277,7 +276,7 @@ def _question_10(conn):
 def _question_11(conn):
     """
     Question 11:
-    What is the average GPA of applicants accepted to 
+    What is the average GPA of applicants accepted to
     Johns Hopkins University for a master's degree who
     reported their gpa?
     """
