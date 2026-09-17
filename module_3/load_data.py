@@ -23,6 +23,7 @@ CREATE_TABLE_SQL = """
     CREATE TABLE IF NOT EXISTS applicants (
         p_id INTEGER PRIMARY KEY,
         program TEXT,
+        university TEXT,
         comments TEXT,
         date_added DATE,
         url TEXT UNIQUE,
@@ -43,6 +44,7 @@ INSERT_SQL = """
     INSERT INTO applicants (
         p_id,
         program,
+        university,
         comments,
         date_added,
         url,
@@ -60,6 +62,7 @@ INSERT_SQL = """
     VALUES (
         %(p_id)s,
         %(program)s,
+        %(university)s,
         %(comments)s,
         %(date_added)s,
         %(url)s,
@@ -76,6 +79,7 @@ INSERT_SQL = """
     )
     ON CONFLICT (p_id) DO UPDATE SET
         program = EXCLUDED.program,
+        university = EXCLUDED.university,
         comments = EXCLUDED.comments,
         date_added = EXCLUDED.date_added,
         url = EXCLUDED.url,
@@ -171,6 +175,7 @@ def _transform_record(applicant):
     return {
         "p_id": p_id,
         "program": _clean_text(applicant.get("program_name")),
+        "university": _clean_text(applicant.get("university")),
         "comments": _clean_text(applicant.get("comments")),
         "date_added": _parse_date(applicant.get("date_added")),
         "url": url,
