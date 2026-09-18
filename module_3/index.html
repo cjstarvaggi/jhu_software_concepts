@@ -1,0 +1,320 @@
+<!doctype html>
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <title>Graduate Applicant Analysis</title>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    </head>
+
+    <body>
+        <main class="container">
+            <header class="page-header">
+                <h1>Graduate Applicant Analysis</h1>
+                <p>This web application performs an analysis of Grad Café graduate school applicant data retrieved dynamically from PostgreSQL. "Pull Data" checks Grad Café for newly submitted application results and adds new records to the database (depending on the amount of new data available, this may take some time). "Update Analysis" refreshes the answers on this page using the current contents of the database.</p>
+            </header>
+
+            <div class="pull-controls">
+                <button id="pull-data-button" type="button" onclick="startPull()">Pull Data</button>
+
+                <button id="update-analysis-button" type="button" onclick="updateAnalysis()">Update Analysis</button>
+
+                <span id="pull-status"> Ready to pull data. </span>
+            </div>
+
+            <section class="results-section">
+                <h2>Required Analysis</h2>
+
+                <div class="results-grid">
+                    <article class="result-card">
+                        <h3>Question 1</h3>
+
+                        <p class="question">
+                            How many entries in the database are from applicants who applied for Fall 2026?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_1 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 2</h3>
+
+                        <p class="question">
+                            Among entries that provide a nationality classification, what percentage are international
+                            students?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_2 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 3</h3>
+
+                        <p class="question">
+                            What is the average GPA, GRE Quantitative, GRE Verbal, and GRE Analytical Writing scores of
+                            applicants who provide each metric?
+                        </p>
+
+                        <div class="comparison">
+                            {% for result in results.question_3 %}
+                            <div>
+                                <span class="answer"> Answer: {{ result }} </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 4</h3>
+
+                        <p class="question">
+                            What is the average GPA of American applicants who applied for Fall 2026?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_4 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 5</h3>
+
+                        <p class="question">What percentage of Fall 2025 entries are acceptances?</p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_5 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 6</h3>
+
+                        <p class="question">
+                            What is the average GPA of accepted applicants who applied for Fall 2026?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_6 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 7</h3>
+
+                        <p class="question">
+                            How many entries are from applicants who applied to Johns Hopkins University for a master's
+                            degree in Computer Science?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_7 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 8</h3>
+
+                        <p class="question">
+                            How many Fall 2026 entries are acceptances from applicants applying for a PhD in Computer
+                            Science at Georgetown University, MIT, Stanford University, or Carnegie Mellon University?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_8 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 9</h3>
+
+                        <p class="question">
+                            How many Fall 2026 entries are acceptances from applicants applying for a PhD in Computer
+                            Science at the specified universities, comparing the original fields with the LLM-adjusted
+                            fields?
+                        </p>
+
+                        <div class="comparison">
+                            {% for result in results.question_9 %}
+                            <div>
+                                <span class="answer"> Answer: {{ result }} </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="results-section">
+                <h2>Original Questions</h2>
+
+                <div class="results-grid">
+                    <article class="result-card">
+                        <h3>Question 10</h3>
+
+                        <p class="question">
+                            How many entries are applicants applying for a Physics PhD at West Virginia University?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_10 }} </span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="result-card">
+                        <h3>Question 11</h3>
+
+                        <p class="question">
+                            What is the average GPA of applicants accepted to Johns Hopkins University for a master's
+                            degree who reported their GPA?
+                        </p>
+
+                        <div class="comparison">
+                            <div>
+                                <span class="answer"> Answer: {{ results.question_11 }} </span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <footer>
+                <p>Results are retrieved from PostgreSQL using the SQLAlchemy Applicant model.</p>
+            </footer>
+        </main>
+
+        <script>
+            const pullButton = document.getElementById("pull-data-button");
+
+            const pullStatus = document.getElementById("pull-status");
+
+            const updateButton = document.getElementById("update-analysis-button");
+
+            async function startPull() {
+                pullButton.disabled = true;
+                updateButton.disabled = true;
+
+                pullStatus.textContent = "Starting data pull...";
+
+                await fetch("/pull-data", {
+                    method: "POST",
+                });
+
+                checkPullStatus();
+            }
+
+            async function resumePull() {
+                pullButton.disabled = true;
+                updateButton.disabled = true;
+
+                pullStatus.textContent = "Resuming scraping...";
+
+                await fetch("/resume-pull", {
+                    method: "POST",
+                });
+
+                checkPullStatus();
+            }
+
+            async function updateAnalysis() {
+                updateButton.disabled = true;
+                pullButton.disabled = true;
+
+                pullStatus.textContent = "Updating analysis...";
+
+                const response = await fetch("/update-analysis", {
+                    method: "POST",
+                });
+
+                const status = await response.json();
+
+                if (status.state === "busy") {
+                    updateButton.disabled = true;
+
+                    pullStatus.textContent = status.message;
+
+                    return;
+                }
+
+                sessionStorage.setItem("update-success-message", "Analysis and fields updated successfully.");
+
+                window.location.reload();
+            }
+
+            async function checkPullStatus() {
+                const response = await fetch("/pull-status");
+
+                const status = await response.json();
+
+                pullStatus.textContent = status.message;
+
+                if (status.state === "idle") {
+                    pullButton.disabled = false;
+                    pullButton.textContent = "Pull Data";
+                    pullButton.onclick = startPull;
+
+                    updateButton.disabled = false;
+
+                    return;
+                }
+
+                if (status.state === "authenticating") {
+                    pullButton.disabled = false;
+                    updateButton.disabled = true;
+                    pullButton.textContent = "Resume Pulling";
+
+                    pullButton.onclick = resumePull;
+
+                    return;
+                }
+
+                if (status.state === "complete" || status.state === "error") {
+                    pullButton.disabled = false;
+                    updateButton.disabled = false;
+                    pullButton.textContent = "Pull Data";
+
+                    pullButton.onclick = startPull;
+
+                    return;
+                }
+
+                pullButton.disabled = true;
+                updateButton.disabled = true;
+
+                setTimeout(checkPullStatus, 1000);
+            }
+
+            checkPullStatus().then(() => {
+                const updateSuccessMessage = sessionStorage.getItem("update-success-message");
+
+                if (updateSuccessMessage) {
+                    pullStatus.textContent = updateSuccessMessage;
+
+                    sessionStorage.removeItem("update-success-message");
+                }
+            });
+        </script>
+    </body>
+</html>

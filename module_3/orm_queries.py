@@ -3,7 +3,7 @@ from sqlalchemy import Numeric, and_, cast, func, or_, select
 from models import Applicant, Session
 
 
-def _question_1(session):
+def _question_1(session, print_string=True):
     """
     Question 1:
     How many entries in the database are from applicants
@@ -14,11 +14,74 @@ def _question_1(session):
     )
 
     result = session.execute(statement).scalar_one()
+    result_string = f'Fall 2026 applicant count: {result:,}'
 
-    print(f"1. Fall 2026 applicant count: {result:,}")
+    if print_string:
+        print(f"1. {result_string}")
+    else:
+        return result_string
 
 
-def _question_4(session):
+def _question_2(session, print_string=True): 
+    """ 
+    Question 2: Among entries that provide a nationality 
+    classification, what percentage are international students? 
+    """ 
+    total_statement = select(func.count(Applicant.p_id)).where( 
+        Applicant.us_or_international.is_not(None) 
+    ) 
+    international_statement = select(func.count(Applicant.p_id)).where( 
+        Applicant.us_or_international.ilike( 
+            "International (my highest degree is from outside USA)" 
+        ) 
+    ) 
+
+    total = session.execute(total_statement).scalar_one() 
+    international = session.execute( international_statement ).scalar_one() 
+    percentage = (international / total) * 100 
+
+    result_string = f"Percent international: {percentage:.2f}%" 
+    if print_string: 
+        print(f"2. {result_string}") 
+    else: 
+        return result_string 
+
+def _question_3(session, print_string=True): 
+    """ 
+    Question 3: What is the average GPA, GRE Quantitative, GRE 
+    Verbal, and GRE Analytical Writing scores of applicants 
+    who provide each metric? 
+    """ 
+    gpa_statement = select(func.round(cast(func.avg(Applicant.gpa), Numeric), 2)) 
+    gre_statement = select(func.round(cast(func.avg(Applicant.gre), Numeric), 2 )) 
+    gre_v_statement = select(func.round(cast(func.avg(Applicant.gre_v), Numeric), 2)) 
+    gre_aw_statement = select(func.round(cast(func.avg(Applicant.gre_aw), Numeric), 2 )) 
+
+    gpa = session.execute(gpa_statement).scalar_one_or_none() 
+    gre = session.execute(gre_statement).scalar_one_or_none() 
+    gre_v = session.execute(gre_v_statement).scalar_one_or_none() 
+    gre_aw = session.execute( gre_aw_statement ).scalar_one_or_none() 
+
+    result_string_1 = f"Average GPA: {gpa:.2f}" 
+    result_string_2 = f"Average GRE Quantitative: {gre:.2f}" 
+    result_string_3 = f"Average GRE Verbal: {gre_v:.2f}" 
+    result_string_4 = f"Average GRE Analytical Writing: {gre_aw:.2f}"
+
+    if print_string: 
+        print(f"3. {result_string_1}") 
+        print(f"3. {result_string_2}") 
+        print(f"3. {result_string_3}") 
+        print(f"3. {result_string_4}") 
+    else: 
+        return [ 
+            result_string_1, 
+            result_string_2, 
+            result_string_3, 
+            result_string_4, 
+        ]
+
+
+def _question_4(session, print_string=True):
     """
     Question 4:
     What is the average GPA of American applicants
@@ -33,11 +96,14 @@ def _question_4(session):
     )
 
     result = session.execute(statement).scalar_one_or_none()
+    result_string = f'Average Fall 2026 American applicant GPA: {result:.2f}'
+    if print_string:
+        print(f"4. {result_string}")
+    else:
+         return result_string
 
-    print(f"4. Average Fall 2026 American applicant GPA: {result:.2f}")
 
-
-def _question_5(session):
+def _question_5(session, print_string=True):
     """
     Question 5:
     What percentage of Fall 2025 entries are acceptances?
@@ -57,10 +123,59 @@ def _question_5(session):
     accepted = session.execute(accepted_statement).scalar_one()
     percentage = (accepted / total) * 100
 
-    print(f"5. Fall 2025 acceptance percentage: {percentage:.2f}%")
+    result_string = f'Fall 2025 acceptance percentage: {percentage:.2f}%'
+    if print_string:
+        print(f"5. {result_string}")
+    else:
+        return result_string
+
+def _question_6(session, print_string=True): 
+    """ 
+    Question 6: What is the average GPA of accepted applicants 
+    who applied for Fall 2026? 
+    """ 
+    statement = select(func.round(cast(func.avg(Applicant.gpa), Numeric), 2)).where( 
+        and_( 
+            Applicant.term.ilike("Fall 2026"), 
+            Applicant.status.ilike("Accepted"), 
+            Applicant.gpa.is_not(None), 
+        ) 
+    ) 
+
+    result = session.execute(statement).scalar_one_or_none() 
+    result_string = (f"Average Fall 2026 accepted applicant GPA: {result:.2f}")
+    if print_string: 
+        print(f"6. {result_string}") 
+    else: 
+        return result_string 
+
+def _question_7(session, print_string=True): 
+    """ 
+    Question 7: How many entries are from applicants who applied 
+    to Johns Hopkins University for a master's degree in Computer 
+    Science? 
+    """ 
+    university_conditions = [ 
+        Applicant.university.ilike( "%Johns Hopkins University%" ), 
+        Applicant.university.ilike("%JHU%"), 
+    ] 
+    statement = select(func.count(Applicant.p_id)).where( 
+        and_( 
+            or_(*university_conditions), 
+            Applicant.degree.ilike("Masters"), 
+            Applicant.program.ilike("Computer Science"), 
+        )
+    ) 
+    result = session.execute(statement).scalar_one() 
+    result_string = (f"JHU Computer Science masters applicants: {result:,}") 
+
+    if print_string: 
+        print(f"7. {result_string}") 
+    else: 
+        return result_string
 
 
-def _question_8(session):
+def _question_8(session, print_string=True):
     """
     Question 8:
     How many Fall 2026 entries are acceptances from applicants
@@ -92,12 +207,14 @@ def _question_8(session):
 
     result = session.execute(statement).scalar_one()
 
-    print(
-        f"8. Fall 2026 various university Computer Science PhD acceptances: {result:,}"
-    )
+    result_string = f"Fall 2026 various university Computer Science PhD acceptances: {result:,}"
+    if print_string:
+        print(f"8. {result_string}")
+    else:
+        return result_string
+    
 
-
-def _question_9(session):
+def _question_9(session, print_string=True):
     """
     Question 9:
     How many Fall 2026 entries are acceptances from applicants
@@ -145,12 +262,45 @@ def _question_9(session):
     original_result = session.execute(original_statement).scalar_one()
     llm_result = session.execute(llm_statement).scalar_one()
 
-    print(f"9. Original-field count: {original_result:,}")
-    print(f"9. LLM-field count: {llm_result:,}")
-    print(f"9. Difference: {original_result - llm_result:,}")
+    result_string_1 = f"Original-field count: {original_result:,}"
+    result_string_2 = f"LLM-field count: {llm_result:,}"
+    result_string_3 = f"Difference: {original_result - llm_result:,}"
+
+    if print_string:
+        print(f"9. {result_string_1}")
+        print(f"9. {result_string_2}")
+        print(f"9. {result_string_3}")
+    else:
+        return [result_string_1, result_string_2, result_string_3]
 
 
-def _question_11(session):
+def _question_10(session, print_string=True): 
+    """ 
+    Question 10: How many entries are applicants applying 
+    for a Physics PhD at West Virginia University? 
+    """ 
+    university_conditions = [ 
+        Applicant.university.ilike( "%West Virginia University%" ), 
+        Applicant.university.ilike("%WVU%"), 
+    ] 
+    statement = select(func.count(Applicant.p_id)).where( 
+        and_( 
+            or_(*university_conditions), 
+            Applicant.program.ilike("Physics"), 
+            Applicant.degree.ilike("PhD"), 
+        ) 
+    ) 
+
+    result = session.execute(statement).scalar_one() 
+    result_string = (f"West Virginia University Physics PhD applicants: {result:,}") 
+
+    if print_string: 
+        print(f"10. {result_string}") 
+    else: 
+        return result_string
+
+
+def _question_11(session, print_string=True):
     """
     Question 11:
     What is the average GPA of applicants accepted to
@@ -173,8 +323,11 @@ def _question_11(session):
 
     result = session.execute(statement).scalar_one_or_none()
 
-    print(f"11. JHU Masters acceptances average GPA: {result:.2f}")
-
+    result_string = f"JHU Masters acceptances average GPA: {result:.2f}"
+    if print_string:
+        print(f"11. {result_string}")
+    else:
+        return result_string
 
 def main():
     """
