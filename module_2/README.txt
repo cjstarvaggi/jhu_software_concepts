@@ -7,11 +7,11 @@ Due Date: 09/13/2026
 
 # RUN INSTRUCTIONS
 
-1. Extract the files
+1. Download and extract the files
 2. pip install -r requirements.txt
-3. run robots_check.py, 
-4. run scrape.py
-5. run clean.py
+3. Run robots_check.py, 
+4. Run scrape.py
+5. Run clean.py
 
 # APPROACH
 
