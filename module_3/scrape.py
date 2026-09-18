@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-
 batch_size = 20
 data_file_name = "llm_extend_applicant_data.json"
 chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -302,23 +301,18 @@ def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=No
 
     if date_added:
         try:
-            item["date_added"] = datetime.strptime(
-                date_added,
-                "%b %d, %Y"
-            ).strftime("%m/%d/%Y")
+            item["date_added"] = datetime.strptime(date_added, "%b %d, %Y").strftime(
+                "%m/%d/%Y"
+            )
 
         except ValueError:
             item["date_added"] = date_added
 
     if "Notes" in html and len(column_fields_html) > 10:
-        item["comments"] = column_fields_html[10].get_text(
-            " ",
-            strip=True
-        )
+        item["comments"] = column_fields_html[10].get_text(" ", strip=True)
 
     return {
-        key: (None if value == "Not provided" else value)
-        for key, value in item.items()
+        key: (None if value == "Not provided" else value) for key, value in item.items()
     }
 
 
@@ -329,10 +323,7 @@ def _process_batch(driver, batch, existing_urls):
 
     urls = [item["url"] for item in batch]
 
-    metadata = {
-        item["url"]: item
-        for item in batch
-    }
+    metadata = {item["url"]: item for item in batch}
 
     print(f"Fetching {len(urls)} result pages...")
 
@@ -346,10 +337,7 @@ def _process_batch(driver, batch, existing_urls):
         html = result["html"]
 
         if not html:
-            print(
-                f"FAILED: {result_url} "
-                f"(HTTP {result.get('status')})"
-            )
+            print(f"FAILED: {result_url} " f"(HTTP {result.get('status')})")
             continue
 
         if result_url in existing_urls:
@@ -366,9 +354,7 @@ def _process_batch(driver, batch, existing_urls):
                 info.get("term"),
             )
         except Exception as e:
-            print(
-                f"PARSE ERROR: {result_url}: {e}"
-            )
+            print(f"PARSE ERROR: {result_url}: {e}")
             continue
 
         records.append(item)
@@ -376,10 +362,7 @@ def _process_batch(driver, batch, existing_urls):
 
     elapsed = time.perf_counter() - start_time
 
-    print(
-        f"Added {len(records)} records "
-        f"in {elapsed:.2f}s"
-    )
+    print(f"Added {len(records)} records " f"in {elapsed:.2f}s")
 
     return records
 
@@ -393,11 +376,7 @@ def scrape_data(survey_url, authentication_event=None):
 
     data = _load_data()
 
-    existing_urls = {
-        item["url"]
-        for item in data
-        if item.get("url")
-    }
+    existing_urls = {item["url"] for item in data if item.get("url")}
 
     highest_result_id = _get_highest_result_id(data)
 
@@ -416,7 +395,7 @@ def scrape_data(survey_url, authentication_event=None):
 
     _initialize_chrome(survey_url)
 
-    if authentication_event is not None: 
+    if authentication_event is not None:
         authentication_event.wait()
 
     driver = _commandeer_chrome()
@@ -431,17 +410,11 @@ def scrape_data(survey_url, authentication_event=None):
                     table_info,
                     result_urls,
                     next_url,
-                ) = _scrape_survey_page(
-                    driver,
-                    current_url
-                )
+                ) = _scrape_survey_page(driver, current_url)
 
             except Exception as e:
                 print()
-                print(
-                    f"ERROR loading survey page "
-                    f"{page_number}:"
-                )
+                print(f"ERROR loading survey page " f"{page_number}:")
                 print(e)
                 save_data(data)
                 print("Data checkpoint saved")
@@ -450,12 +423,8 @@ def scrape_data(survey_url, authentication_event=None):
                 time.sleep(5)
                 continue
 
-            print(
-                f"Found {len(result_urls)} result URLs"
-            )
-            print(
-                f"Next page: {next_url or 'NONE'}"
-            )
+            print(f"Found {len(result_urls)} result URLs")
+            print(f"Next page: {next_url or 'NONE'}")
 
             new_results = []
             reached_existing_data = False
@@ -492,19 +461,10 @@ def scrape_data(survey_url, authentication_event=None):
                     }
                 )
 
-            print(
-                f"New results: "
-                f"{len(new_results)}"
-            )
+            print(f"New results: " f"{len(new_results)}")
 
-            for start in range(
-                0,
-                len(new_results),
-                batch_size
-            ):
-                batch = new_results[
-                    start : start + batch_size
-                ]
+            for start in range(0, len(new_results), batch_size):
+                batch = new_results[start : start + batch_size]
 
                 records = _process_batch(
                     driver,
@@ -515,9 +475,7 @@ def scrape_data(survey_url, authentication_event=None):
                 data = records + data
                 new_records += len(records)
 
-                print(
-                    f"TOTAL: {len(data):,}"
-                )
+                print(f"TOTAL: {len(data):,}")
 
                 save_data(data)
 
@@ -525,36 +483,22 @@ def scrape_data(survey_url, authentication_event=None):
 
             if reached_existing_data:
                 print()
-                print(
-                    "Reached existing data."
-                )
-                print(
-                    "Scraping stopped safely."
-                )
+                print("Reached existing data.")
+                print("Scraping stopped safely.")
                 break
 
             if not next_url:
                 print()
-                print(
-                    f"WARNING: No Next link found "
-                    f"on page {page_number}"
-                )
-                print(
-                    "Scraping stopped safely"
-                )
+                print(f"WARNING: No Next link found " f"on page {page_number}")
+                print("Scraping stopped safely")
                 save_data(data)
 
                 break
 
             if next_url == current_url:
                 print()
-                print(
-                    "WARNING: Next URL is the same "
-                    "as the current URL"
-                )
-                print(
-                    "Stopping to prevent an infinite loop"
-                )
+                print("WARNING: Next URL is the same " "as the current URL")
+                print("Stopping to prevent an infinite loop")
                 save_data(data)
 
                 break
@@ -563,9 +507,7 @@ def scrape_data(survey_url, authentication_event=None):
             page_number += 1
 
             print()
-            print(
-                f"Moving to page {page_number}"
-            )
+            print(f"Moving to page {page_number}")
 
             time.sleep(0.2)
 

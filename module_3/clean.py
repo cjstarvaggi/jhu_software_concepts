@@ -8,7 +8,6 @@ from llm_hosting.app import (
     CANON_UNIS,
 )
 
-
 data_file_name = "llm_extend_applicant_data.json"
 
 
@@ -73,10 +72,9 @@ def _is_already_cleaned(row):
     """
     Checks whether a record has already been cleaned
     """
-    return (
-        row.get("llm-generated-program") not in (None, "")
-        and row.get("llm-generated-university") not in (None, "")
-    )
+    return row.get("llm-generated-program") not in (None, "") and row.get(
+        "llm-generated-university"
+    ) not in (None, "")
 
 
 def _canon_check(

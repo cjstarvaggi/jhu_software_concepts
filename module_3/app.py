@@ -1,7 +1,7 @@
 import threading
-import json 
+import json
 from flask import Flask, jsonify, render_template, request, send_from_directory
-from clean import clean_data, load_data as load_clean_data 
+from clean import clean_data, load_data as load_clean_data
 from load_data import main as load_sql_data
 from models import Session
 from orm_queries import (
@@ -19,20 +19,18 @@ from orm_queries import (
 )
 from scrape import scrape_data, survey_url
 
-
 app = Flask(
     __name__,
     template_folder=".",
     static_folder=".",
 )
 
-pull_status = { 
-    "state": "idle", 
-    "message": 
-    "Ready to pull data.", 
-} 
+pull_status = {
+    "state": "idle",
+    "message": "Ready to pull data.",
+}
 
-authentication_event = threading.Event() 
+authentication_event = threading.Event()
 pull_thread = None
 
 
@@ -58,16 +56,16 @@ def _run_pull():
         data = load_clean_data("llm_extend_applicant_data.json")
         cleaned_data = clean_data(data)
 
-        with open("llm_extend_applicant_data.json", "w",encoding="utf-8") as file:
+        with open("llm_extend_applicant_data.json", "w", encoding="utf-8") as file:
             json.dump(cleaned_data, file, ensure_ascii=False, indent=2)
 
         pull_status["state"] = "loading"
-        pull_status["message"] = ("Loading new applicant data into PostgreSQL...")
+        pull_status["message"] = "Loading new applicant data into PostgreSQL..."
 
         load_sql_data()
 
         pull_status["state"] = "complete"
-        pull_status["message"] = ("Data pull completed successfully.")
+        pull_status["message"] = "Data pull completed successfully."
 
     except Exception as e:
         pull_status["state"] = "error"
@@ -81,10 +79,7 @@ def _is_pull_running():
     """
     Checks whether the Pull Data process is currently running.
     """
-    return (
-        pull_thread is not None
-        and pull_thread.is_alive()
-    )
+    return pull_thread is not None and pull_thread.is_alive()
 
 
 @app.route("/pull-data", methods=["POST"])
@@ -211,8 +206,7 @@ def update_analysis():
         {
             "state": "ready",
             "message": (
-                "Refreshing analysis using the latest "
-                "data in PostgreSQL..."
+                "Refreshing analysis using the latest " "data in PostgreSQL..."
             ),
         }
     )
