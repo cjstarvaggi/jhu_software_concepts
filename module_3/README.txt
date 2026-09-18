@@ -13,6 +13,7 @@ Due Date: 09/20/2026
 4. Run load_data.py
 5. Run python query_data.py
 6. Run python models.py and orm_queries.py
+7. Run app.py
 
 # APPROACH
 
@@ -38,6 +39,27 @@ queries. It creates a SQLAlchemy session and connects to the model in models.py 
 query the applicants table. The script answers Questions 1, 4, 5, 8, 9, and 11; 
 GPA averages are similarly cast to Numeric before rounding to two decimal places 
 to ensure compatibility with PostgreSQL's data types.
+
+clean.py cleans and standardizes the scraped applicant data before it is loaded into 
+PostgreSQL. It reads the applicant records from llm_extend_applicant_data.json, 
+checks for records that have already been cleaned, and uses canonical mappings/LLM-
+generated fields to standardize program and university names. The cleaned records 
+are then saved back to the JSON file so that the resulting data can be used by 
+load_data.py.
+
+scrape.py collects applicant data from the Grad Café survey and result pages using 
+Selenium and BeautifulSoup. It attaches to a Chrome browser so that Cloudflare 
+verification can be completed manually ahead of scraping. The script checks the 
+result IDs against the existing applicant data and only retrieves newer records, 
+saving the results incrementally to llm_extend_applicant_data.json so that previously 
+collected records do not need to be scraped again.
+
+app.py provides the Flask web application used to display the analysis results. The 
+script runs ORM queries from orm_queries.py and passes their results to the webpage 
+for display. The application also provides controls for pulling new applicant data 
+and updating the analysis; the data pull runs through the scraping, cleaning, 
+and database-loading process while the analysis update re-queries the current 
+PostgreSQL data without starting another scrape.
 
 # PART 7 COMPARISON ANALYSIS:
 
@@ -74,8 +96,21 @@ flexibility as to the types of queries that can be made.
 
 # LIMITATIONS
 
-No known limitations.
+The scraper requires Google Chrome and a Windows-specific Chrome executable
+path; Cloudflare verification requires a single initial manual interaction.
 
 # KNOWN BUGS
 
-No known bugs.
+The scraper depends on The Grad Cafe's current HTML structure; as such, changes
+to the site's page layout, field ordering, or pagination could cause incorrect
+or missing data. The result parser also relies on fixed <dd> element positions;
+a more robust version would identify fields by their labels.
+
+The GPU acceleration settings utilized to offload additional threads may not
+be compatible with other machines; this can be resolved be changing 
+N_GPU_LAYERS back to 0 for CPU-only processing, though it will significantly
+slow down the process.
+
+Whilst some fine-tuning of the model was able to fix some of the original 
+LLM standardization issues, some may undoubtedly persist leading to minor
+spelling errors in some llm generated json fields.
