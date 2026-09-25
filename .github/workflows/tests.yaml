@@ -45,12 +45,15 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
           DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
           PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
+        working-directory: module_4
         run: |
-          python module_4/src/load_data.py
+          python src/load_data.py
 
       - name: Run test suite
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
+          DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
           PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
+        working-directory: module_4
         run: |
-          pytest -m "web or buttons or analysis or db or integration" --cov=module_4/src
+          pytest -m "web or buttons or analysis or db or integration" --cov=src
