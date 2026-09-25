@@ -281,6 +281,11 @@ def test_end_to_end_pull_update_render(
         fake_scraper,
     )
 
+    monkeypatch.setattr(
+        app_module,
+        "APPLICANT_DATA_FILE",
+        str(clean_data_file),
+    )
 
     response = client.post("/pull-data")
 
@@ -481,6 +486,12 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
         app_module,
         "scrape_data",
         fake_scraper,
+    )
+
+    monkeypatch.setattr(
+        app_module,
+        "APPLICANT_DATA_FILE",
+        str(clean_data_file),
     )
 
     response = client.post("/pull-data")
