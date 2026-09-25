@@ -133,8 +133,18 @@ INSERT_SQL = """
 
 def _clean_text(value):
     """
-    Converts missing and blank values to None.
+    Normalize a text value for database storage.
+
+    Missing values and strings containing only whitespace are converted to
+    ``None``. Non-string values are returned unchanged.
+
+    :param value: Value to normalize.
+    :type value: object
+    :returns: The stripped value, ``None`` for missing or blank strings, or
+        the original non-string value.
+    :rtype: object
     """
+
     if value is None:
         return None
 
@@ -148,9 +158,17 @@ def _clean_text(value):
 
 def _clean_float(value):
     """
-    Converts numeric values to floats, or None when
-    they are missing or invalid.
+    Convert a value to a floating-point number for database storage.
+
+    Missing, blank, and invalid numeric values are converted to ``None``.
+
+    :param value: Value to convert to a float.
+    :type value: object
+    :returns: The converted floating-point value, or ``None`` when the
+        value is missing or invalid.
+    :rtype: float or None
     """
+
     value = _clean_text(value)
 
     if value is None:
@@ -164,9 +182,17 @@ def _clean_float(value):
 
 def _parse_date(value):
     """
-    Converts MM/DD/YYYY strings into Python date
-    objects.
+    Convert an ``MM/DD/YYYY`` date string into a Python ``date`` object.
+
+    Missing, blank, or incorrectly formatted values are converted to
+    ``None``.
+
+    :param value: Date value to parse.
+    :type value: object
+    :returns: Parsed date, or ``None`` when the value is missing or invalid.
+    :rtype: datetime.date or None
     """
+
     value = _clean_text(value)
 
     if value is None:
@@ -180,10 +206,17 @@ def _parse_date(value):
 
 def _get_p_id(url):
     """
-    Creates a unique id from the Grad Cafe result url
-    by stripping the page id and converting it to an
-    integer.
+    Extract the Grad Cafe result ID from a result URL.
+
+    The final path component of the URL is interpreted as an integer and
+    used as the applicant's database primary key.
+
+    :param url: Grad Cafe result URL.
+    :type url: str or None
+    :returns: The numeric result ID, or ``None`` if it cannot be extracted.
+    :rtype: int or None
     """
+
     url = _clean_text(url)
 
     if not url:
@@ -197,10 +230,22 @@ def _get_p_id(url):
 
 def _transform_record(applicant):
     """
-    Transforms a dictionary from the JSON
-    file into one compatible with the database
-    schema.
+    Transform a JSON applicant record into the structure expected by the
+    PostgreSQL ``applicants`` table.
+
+    Text fields are cleaned, numeric fields are converted to floats, dates
+    are converted to Python ``date`` objects, and the Grad Cafe result ID
+    is extracted from the record URL.
+
+    Records without a valid result ID are skipped by returning ``None``.
+
+    :param applicant: Applicant record loaded from the JSON data file.
+    :type applicant: dict
+    :returns: Database-ready applicant record, or ``None`` when the record
+        does not contain a valid result ID.
+    :rtype: dict or None
     """
+
     url = _clean_text(applicant.get("url"))
     p_id = _get_p_id(url)
 
@@ -231,23 +276,30 @@ def _transform_record(applicant):
 
 def main(rollback=False):
     """
-    Creates the table if it does not already exist and
-    loads applicant data from the JSON file.
+    Load applicant data from JSON and synchronize it with PostgreSQL.
 
-    Existing non-NULL database values are never replaced
-    with incoming None/NULL values.
+    The ``applicants`` table is created if it does not already exist.
+    Existing database values are preserved when the corresponding incoming
+    value is ``None``. Non-NULL incoming values can replace existing values
+    when they differ.
 
-    New non-NULL values replace existing values when they
-    differ.
+    Database changes are committed unless ``rollback`` is ``True``. Any
+    exception during processing causes the current transaction to be
+    rolled back before the exception is re-raised.
 
-    Changes are committed to the database unless rollback=True.
+    :param rollback: If ``True``, roll back the transaction instead of
+        committing changes.
+    :type rollback: bool
+    :raises Exception: Re-raises any exception encountered while loading
+        or writing applicant data.
     """
+
     print(f"Loading data from {DATA_FILE}...")
 
     with open(DATA_FILE, "r", encoding="utf-8") as file:
         applicants = json.load(file)
 
-    connection_string = DATABASE_URL 
+    connection_string = DATABASE_URL
 
     inserted = 0
     updated = 0
@@ -301,5 +353,5 @@ def main(rollback=False):
     print("Database loading complete.")
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()

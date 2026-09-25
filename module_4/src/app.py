@@ -34,8 +34,18 @@ pull_thread = None
 
 def create_app(test_config=None):
     """
-    The application factory for creating the Flask
-    application.
+    Create and configure the Flask application.
+
+    The application factory creates the Flask instance, applies any
+    test-specific configuration, sets the default data-pull and analysis
+    update functions, and registers the application's routes.
+
+    :param test_config: Optional configuration values to apply to the Flask
+        application. Existing configuration values are updated with these
+        values when provided.
+    :type test_config: dict or None
+    :returns: Configured Flask application instance.
+    :rtype: flask.Flask
     """
     flask_app = Flask(
         __name__,
@@ -48,7 +58,6 @@ def create_app(test_config=None):
 
     flask_app.config.setdefault("PULL_FUNCTION", _run_pull)
     flask_app.config.setdefault("UPDATE_FUNCTION", lambda: None)
-    
 
     register_routes(flask_app)
 
@@ -56,6 +65,17 @@ def create_app(test_config=None):
 
 
 def _run_pull():
+    """
+    Run the complete applicant data-pull pipeline.
+
+    The pipeline scrapes applicant data, waits for any required manual
+    authentication, cleans the resulting data, writes the cleaned data back
+    to the JSON file, and loads it into PostgreSQL. The global pull status is
+    updated as each stage progresses.
+
+    Any exception is caught and recorded in ``pull_status`` as an error.
+    The authentication event is cleared when processing finishes.
+    """
     global pull_status
 
     try:
@@ -105,22 +125,45 @@ def _run_pull():
     finally:
         authentication_event.clear()
 
+
 def _is_pull_running():
     """
-    Checks whether the Pull Data process is currently running.
+    Check whether the data-pull background thread is currently running.
+
+    :returns: ``True`` when a pull thread exists and is alive; otherwise
+        ``False``.
+    :rtype: bool
     """
     return pull_thread is not None and pull_thread.is_alive()
 
 
 def register_routes(flask_app):
     """
-    Registers all application routes on a Flask application instance.
+    Register all application routes on a Flask application instance.
+
+    The registered routes handle starting and resuming data pulls, reporting
+    pull status, displaying analysis results, refreshing analysis, and
+    serving the application's stylesheet.
+
+    :param flask_app: Flask application instance on which the routes should
+        be registered.
+    :type flask_app: flask.Flask
+    :returns: ``None``.
+    :rtype: None
     """
 
     @flask_app.route("/pull-data", methods=["POST"])
     def pull_data():
         """
-        Starts the data pulling process.
+        Start the applicant data-pull process in a background thread.
+
+        If a pull is already running, the endpoint returns a ``409`` response
+        containing the current pull state. Otherwise, it starts the configured
+        pull function in a daemon thread.
+
+        :returns: JSON response describing whether the pull was started or
+            is already running.
+        :rtype: tuple[flask.Response, int]
         """
         global pull_thread
 
@@ -155,7 +198,14 @@ def register_routes(flask_app):
     @flask_app.route("/resume-pull", methods=["POST"])
     def resume_pull():
         """
-        Resumes the scraping process after manual authentication.
+        Resume the scraping process after manual authentication.
+
+        If the application is not currently waiting for authentication, the
+        current pull state is returned without changing the authentication
+        event.
+
+        :returns: JSON response containing the current or resumed pull state.
+        :rtype: flask.Response
         """
         if pull_status["state"] != "authenticating":
             return jsonify(
@@ -182,7 +232,11 @@ def register_routes(flask_app):
     @flask_app.route("/pull-status")
     def pull_status_route():
         """
-        Returns the current state of the data pull.
+        Return the current state and status message for the data pull.
+
+        :returns: JSON response containing the current pull state and
+            message.
+        :rtype: flask.Response
         """
         return jsonify(
             {
@@ -195,9 +249,16 @@ def register_routes(flask_app):
     @flask_app.route("/analysis")
     def index():
         """
-        Displays all required analysis results.
-        """
+        Display the applicant analysis results.
 
+        All eleven ORM analysis queries are executed using a shared
+        SQLAlchemy session. The resulting values are passed to the
+        ``index.html`` template. The optional ``updated`` query parameter
+        indicates whether the analysis has been refreshed.
+
+        :returns: Rendered analysis page.
+        :rtype: str
+        """
         with Session() as session:
             results = {
                 "question_1": _question_1(session, print_string=False),
@@ -219,6 +280,17 @@ def register_routes(flask_app):
 
     @flask_app.route("/update-analysis", methods=["POST"])
     def update_analysis():
+        """
+        Refresh the analysis using the latest PostgreSQL data.
+
+        If a data pull is currently running, the analysis is not refreshed
+        and a ``409`` response is returned. Otherwise, the configured update
+        function is called and a successful response is returned.
+
+        :returns: JSON response indicating whether the analysis refresh was
+            started or was blocked because a pull is running.
+        :rtype: tuple[flask.Response, int]
+        """
         if _is_pull_running():
             return jsonify(
                 {
@@ -247,7 +319,11 @@ def register_routes(flask_app):
     @flask_app.route("/style.css")
     def style():
         """
-        Retrieves the styling.
+        Serve the application's CSS stylesheet.
+
+        :returns: The ``style.css`` file from the application's current
+            directory.
+        :rtype: flask.Response
         """
         return send_from_directory(".", "style.css")
 

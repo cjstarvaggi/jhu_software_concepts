@@ -2,7 +2,20 @@ from sqlalchemy import Numeric, and_, cast, func, or_, select
 
 from models import Applicant, Session
 
+
 def get_applicant(p_id):
+    """
+    Retrieve an applicant by primary key and return its fields as a dictionary.
+
+    A SQLAlchemy session is created for the lookup and closed after the
+    operation completes, including when an exception is raised.
+
+    :param p_id: Primary key of the applicant to retrieve.
+    :type p_id: int
+    :returns: Applicant fields as a dictionary, or ``None`` if no applicant
+        exists with the specified primary key.
+    :rtype: dict or None
+    """
     session = Session()
 
     try:
@@ -35,9 +48,16 @@ def get_applicant(p_id):
 
 def _question_1(session, print_string=True):
     """
-    Question 1:
-    How many entries in the database are from applicants
-    who applied for Fall 2026?
+    Count applicants who applied for Fall 2026.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted applicant count when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
     """
     statement = select(func.count(Applicant.p_id)).where(
         Applicant.term.ilike("Fall 2026")
@@ -54,10 +74,21 @@ def _question_1(session, print_string=True):
 
 def _question_2(session, print_string=True):
     """
-    Question 2: Among entries that provide a nationality
-    classification, what percentage are international students?
-    """
+    Calculate the percentage of classified applicants who are international.
 
+    Only records with a non-NULL nationality classification are included in
+    the denominator. Two international classifications are counted as
+    international applicants.
+
+    :param session: Active SQLAlchemy session used to execute the queries.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted percentage when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
+    """
     total_statement = select(func.count(Applicant.p_id)).where(
         Applicant.us_or_international.is_not(None)
     )
@@ -90,9 +121,17 @@ def _question_2(session, print_string=True):
 
 def _question_3(session, print_string=True):
     """
-    Question 3: What is the average GPA, GRE Quantitative, GRE
-    Verbal, and GRE Analytical Writing scores of applicants
-    who provide each metric?
+    Calculate average GPA, GRE Quantitative, GRE Verbal, and GRE Analytical
+    Writing scores across applicants who provide each metric.
+
+    :param session: Active SQLAlchemy session used to execute the queries.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted results. If
+        ``False``, return the results as a list of strings instead.
+    :type print_string: bool
+    :returns: A list of formatted average-score strings when ``print_string``
+        is ``False``. Otherwise, returns ``None``.
+    :rtype: list[str] or None
     """
     gpa_statement = select(func.round(cast(func.avg(Applicant.gpa), Numeric), 2))
     gre_statement = select(func.round(cast(func.avg(Applicant.gre), Numeric), 2))
@@ -125,9 +164,17 @@ def _question_3(session, print_string=True):
 
 def _question_4(session, print_string=True):
     """
-    Question 4:
-    What is the average GPA of American applicants
-    who applied for Fall 2026?
+    Calculate the average GPA of American applicants who applied for Fall
+    2026 and reported a GPA.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted average GPA when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
     """
     statement = select(func.round(cast(func.avg(Applicant.gpa), Numeric), 2)).where(
         and_(
@@ -147,8 +194,16 @@ def _question_4(session, print_string=True):
 
 def _question_5(session, print_string=True):
     """
-    Question 5:
-    What percentage of Fall 2025 entries are acceptances?
+    Calculate the percentage of Fall 2025 entries that are acceptances.
+
+    :param session: Active SQLAlchemy session used to execute the queries.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted acceptance percentage when ``print_string`` is
+        ``False``. Otherwise, returns ``None``.
+    :rtype: str or None
     """
     total_statement = select(func.count(Applicant.p_id)).where(
         Applicant.term.ilike("Fall 2025")
@@ -168,7 +223,7 @@ def _question_5(session, print_string=True):
     else:
         percentage = (accepted / total) * 100
         result_string = f"Fall 2025 acceptance percentage: {percentage:.2f}%"
-    
+
     if print_string:
         print(f"5. {result_string}")
     else:
@@ -177,8 +232,17 @@ def _question_5(session, print_string=True):
 
 def _question_6(session, print_string=True):
     """
-    Question 6: What is the average GPA of accepted applicants
-    who applied for Fall 2026?
+    Calculate the average GPA of accepted applicants who applied for Fall
+    2026 and reported a GPA.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted average GPA when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
     """
     statement = select(func.round(cast(func.avg(Applicant.gpa), Numeric), 2)).where(
         and_(
@@ -198,9 +262,20 @@ def _question_6(session, print_string=True):
 
 def _question_7(session, print_string=True):
     """
-    Question 7: How many entries are from applicants who applied
-    to Johns Hopkins University for a master's degree in Computer
-    Science?
+    Count applicants who applied to Johns Hopkins University for a master's
+    degree in Computer Science.
+
+    The university filter matches either ``Johns Hopkins University`` or
+    ``JHU``.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted applicant count when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
     """
     university_conditions = [
         Applicant.university.ilike("%Johns Hopkins University%"),
@@ -224,12 +299,22 @@ def _question_7(session, print_string=True):
 
 def _question_8(session, print_string=True):
     """
-    Question 8:
-    How many Fall 2026 entries are acceptances from applicants
-    applying for a PhD in Computer Science at one of the
-    following universities?
-    """
+    Count Fall 2026 acceptances for Computer Science PhD applicants at the
+    specified universities.
 
+    The university filter includes Georgetown University, Massachusetts
+    Institute of Technology, MIT, Stanford University, and Carnegie Mellon
+    University.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted acceptance count when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
+    """
     university_conditions = [
         Applicant.university.ilike("%Georgetown University%"),
         Applicant.university.ilike("%Massachusetts Institute of Technology%"),
@@ -261,11 +346,22 @@ def _question_8(session, print_string=True):
 
 def _question_9(session, print_string=True):
     """
-    Question 9:
-    How many Fall 2026 entries are acceptances from applicants
-    applying for a PhD in Computer Science at one of the
-    following universities, comparing the original fields
-    with the LLM-adjusted fields?
+    Compare Fall 2026 Computer Science PhD acceptance counts at the
+    specified universities using original and LLM-adjusted fields.
+
+    The original-field query uses ``university`` and ``program``, while the
+    LLM-adjusted query uses ``llm_generated_university`` and
+    ``llm_generated_program``.
+
+    :param session: Active SQLAlchemy session used to execute the queries.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted results. If
+        ``False``, return the results as a list of strings instead.
+    :type print_string: bool
+    :returns: A list containing the original count, LLM-adjusted count, and
+        their difference when ``print_string`` is ``False``. Otherwise,
+        returns ``None``.
+    :rtype: list[str] or None
     """
     original_university_conditions = [
         Applicant.university.ilike("%Georgetown University%"),
@@ -320,8 +416,19 @@ def _question_9(session, print_string=True):
 
 def _question_10(session, print_string=True):
     """
-    Question 10: How many entries are applicants applying
-    for a Physics PhD at West Virginia University?
+    Count applicants applying for a Physics PhD at West Virginia University.
+
+    The university filter matches either ``West Virginia University`` or
+    ``WVU``.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted applicant count when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
     """
     university_conditions = [
         Applicant.university.ilike("%West Virginia University%"),
@@ -346,10 +453,20 @@ def _question_10(session, print_string=True):
 
 def _question_11(session, print_string=True):
     """
-    Question 11:
-    What is the average GPA of applicants accepted to
-    Johns Hopkins University for a master's degree who
-    reported their GPA?
+    Calculate the average GPA of accepted master's applicants to Johns
+    Hopkins University who reported a GPA.
+
+    The university filter matches either ``Johns Hopkins University`` or
+    ``JHU``.
+
+    :param session: Active SQLAlchemy session used to execute the query.
+    :type session: sqlalchemy.orm.Session
+    :param print_string: If ``True``, print the formatted result. If
+        ``False``, return the formatted result instead.
+    :type print_string: bool
+    :returns: Formatted average GPA when ``print_string`` is ``False``.
+        Otherwise, returns ``None``.
+    :rtype: str or None
     """
     university_conditions = [
         Applicant.university.ilike("%Johns Hopkins University%"),
@@ -376,8 +493,10 @@ def _question_11(session, print_string=True):
 
 def main():
     """
-    Creates a SQLAlchemy session and runs the
-    ORM queries.
+    Create a SQLAlchemy session and run the selected applicant queries.
+
+    :returns: ``None``.
+    :rtype: None
     """
     with Session() as session:
         _question_1(session)
@@ -388,5 +507,5 @@ def main():
         _question_11(session)
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     main()

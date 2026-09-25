@@ -45,7 +45,15 @@ JSON_OBJ_RE = re.compile(r"\{.*?\}", re.DOTALL)
 
 # ---------------- Canonical lists + abbrev maps ----------------
 def _read_lines(path: str) -> List[str]:
-    """Read non-empty, stripped lines from a file (UTF-8)."""
+    """Read non-empty, stripped lines from a UTF-8 text file.
+
+    Each non-empty line is returned as a separate list element with leading
+    and trailing whitespace removed. If the file does not exist, an empty
+    list is returned.
+
+    :param path: Path to the text file to read.
+    :returns: A list containing the non-empty, stripped lines from the file.
+    """
     try:
         with open(path, "r", encoding="utf-8") as f:
             return [ln.strip() for ln in f if ln.strip()]
@@ -181,7 +189,14 @@ _LLM = None
 
 
 def _load_llm() -> Llama:
-    """Download (or reuse) the GGUF file and initialize llama.cpp."""
+    """Load and cache the configured GGUF language model.
+
+    The model is downloaded from Hugging Face into the local ``models``
+    directory the first time this function is called. Subsequent calls
+    return the already-initialized global model instance.
+
+    :returns: The initialized :class:`llama_cpp.Llama` model.
+    """
     global _LLM
     if _LLM is not None:
         return _LLM
@@ -202,8 +217,22 @@ def _load_llm() -> Llama:
     return _LLM
 
 
-def _best_match(name: str, candidates: List[str], cutoff: float = 0.86) -> str | None:
-    """Fuzzy match via difflib (lightweight, Replit-friendly)."""
+def _best_match(
+    name: str,
+    candidates: List[str],
+    cutoff: float = 0.86,
+) -> str | None:
+    """Find the closest candidate using :mod:`difflib` fuzzy matching.
+
+    Only the single highest-ranked match is considered, and it must meet
+    the supplied similarity cutoff.
+
+    :param name: Value to compare against the candidate list.
+    :param candidates: Candidate strings to search.
+    :param cutoff: Minimum similarity ratio required for a match.
+    :returns: The closest matching candidate, or ``None`` if no match
+        satisfies the cutoff or either input is empty.
+    """
     if not name or not candidates:
         return None
     matches = difflib.get_close_matches(name, candidates, n=1, cutoff=cutoff)
@@ -211,14 +240,32 @@ def _best_match(name: str, candidates: List[str], cutoff: float = 0.86) -> str |
 
 
 def _comparison_key(value: str) -> str:
-    """Creates a key that allows for comparing entries to the canonical list"""
+    """Create a normalized key for case- and whitespace-insensitive comparison.
+
+    Leading and trailing whitespace is removed, internal whitespace is
+    collapsed, and the resulting value is converted to lowercase.
+
+    :param value: Value to normalize for comparison.
+    :returns: A lowercase comparison key with normalized whitespace.
+    """
     value = str(value or "")
     value = " ".join(value.split())
     return value.lower()
 
 
-def _canonical_match(value: str, canonical_values: List[str]) -> str | None:
-    """Checks to see if a match exists in the canonical lists"""
+def _canonical_match(
+    value: str,
+    canonical_values: List[str],
+) -> str | None:
+    """Find a case- and whitespace-insensitive canonical value.
+
+    The comparison uses :func:`_comparison_key`, but the original canonical
+    spelling is returned when a match is found.
+
+    :param value: Value to search for in the canonical list.
+    :param canonical_values: Canonical values against which to compare.
+    :returns: The matching canonical value, or ``None`` if no match exists.
+    """
     key = _comparison_key(value)
 
     if not key:
@@ -232,15 +279,15 @@ def _canonical_match(value: str, canonical_values: List[str]) -> str | None:
 
 
 def _remove_parenthetical(value: str) -> str:
-    """
-    Removes parenthetical text from a program/university name.
+    """Remove parenthetical text from a program or university name.
 
-    Examples:
-        'University of Illinois Chicago (UIC)'
-            -> 'University of Illinois Chicago'
+    Parenthetical sections, including their surrounding whitespace, are
+    removed. Remaining whitespace is collapsed and leading/trailing
+    whitespace is stripped.
 
-        'University of Toronto (Pissmaster)'
-            -> 'University of Toronto'
+    :param value: Program or university name to clean.
+    :returns: The name with parenthetical text removed and whitespace
+        normalized.
     """
     value = str(value or "")
     value = re.sub(r"\s*\([^)]*\)", "", value)
@@ -248,7 +295,15 @@ def _remove_parenthetical(value: str) -> str:
 
 
 def _post_normalize_program(prog: str) -> str:
-    """Apply common fixes, title case, then canonical/fuzzy mapping."""
+    """Apply deterministic normalization to a program name.
+
+    Known spelling fixes are applied first, followed by an exact canonical
+    lookup, a normalized canonical lookup, and finally fuzzy matching.
+    If no canonical or fuzzy match is found, the cleaned input is preserved.
+
+    :param prog: Program name to normalize.
+    :returns: The normalized or best-matching program name.
+    """
     p = (prog or "").strip()
     p = COMMON_PROG_FIXES.get(p, p)
     if p in CANON_PROGS:
@@ -262,7 +317,15 @@ def _post_normalize_program(prog: str) -> str:
 
 
 def _post_normalize_university(uni: str) -> str:
-    """Expand abbreviations, apply common fixes, capitalization, and canonical map."""
+    """Apply deterministic normalization to a university name.
+
+    Abbreviations and known spelling corrections are applied before exact,
+    normalized canonical, and fuzzy matching. If no match is found, the
+    cleaned input is preserved, with ``Unknown`` returned for an empty value.
+
+    :param uni: University name to normalize.
+    :returns: The normalized or best-matching university name.
+    """
     u = (uni or "").strip()
 
     # Abbreviations
@@ -292,8 +355,23 @@ def _call_llm(
     normalize_program: bool = True,
     normalize_university: bool = True,
 ) -> Dict[str, str]:
-    """Query the tiny LLM while only allowing requested fields to change."""
+    """Standardize a program and university using the local LLM.
 
+    Parenthetical text is removed before constructing the prompt. Each field
+    can independently be marked as eligible or ineligible for normalization.
+    The LLM response is parsed as JSON, with a fallback to the original input
+    when parsing fails. Eligible values are then passed through deterministic
+    post-normalization.
+
+    :param program_name: Original program name.
+    :param university: Original university name.
+    :param normalize_program: Whether the program may be changed by the
+        standardization process.
+    :param normalize_university: Whether the university may be changed by the
+        standardization process.
+    :returns: A dictionary containing ``standardized_program`` and
+        ``standardized_university``.
+    """
     program_name = _remove_parenthetical(program_name)
     university = _remove_parenthetical(university)
 
@@ -386,7 +464,15 @@ def _call_llm(
 
 
 def _normalize_input(payload: Any) -> List[Dict[str, Any]]:
-    """Accept either a list of rows or {'rows': [...]}."""
+    """Normalize supported request payload shapes into a row list.
+
+    A payload may either be a list of row dictionaries or a dictionary
+    containing a list under the ``rows`` key. Any other payload shape
+    produces an empty list.
+
+    :param payload: Parsed JSON payload to normalize.
+    :returns: A list of input rows, or an empty list for unsupported input.
+    """
     if isinstance(payload, list):
         return payload
     if isinstance(payload, dict) and isinstance(payload.get("rows"), list):
@@ -396,13 +482,25 @@ def _normalize_input(payload: Any) -> List[Dict[str, Any]]:
 
 @app.get("/")
 def health() -> Any:
-    """Simple liveness check."""
+    """Return a simple health-check response.
+
+    :returns: A JSON response containing ``{"ok": True}``.
+    """
     return jsonify({"ok": True})
 
 
 @app.post("/standardize")
 def standardize() -> Any:
-    """Standardize rows from an HTTP request and return JSON."""
+    """Standardize applicant rows submitted through the HTTP API.
+
+    The request JSON may contain either a list of rows or a dictionary with
+    a ``rows`` list. Each row's program and university are checked against
+    the canonical lists before being passed to the LLM. The standardized
+    values are added to the row as ``llm-generated-program`` and
+    ``llm-generated-university``.
+
+    :returns: A JSON response containing the processed rows under ``rows``.
+    """
     payload = request.get_json(force=True, silent=True)
     rows = _normalize_input(payload)
 
@@ -434,7 +532,23 @@ def _cli_process_file(
     append: bool,
     to_stdout: bool,
 ) -> None:
-    """Process a JSON file and write JSONL incrementally."""
+    """Process a JSON input file and incrementally write JSON Lines output.
+
+    Input may contain either a list of rows or a dictionary containing a
+    ``rows`` list. Each row is standardized independently and written as a
+    JSON object followed by a newline. Output is flushed after each row so
+    that processing results are available incrementally.
+
+    When ``to_stdout`` is false, output is written to ``out_path`` or, when
+    no output path is supplied, to ``<input>.jsonl``. Existing output is
+    either overwritten or appended to according to ``append``.
+
+    :param in_path: Path to the JSON input file.
+    :param out_path: Destination path for JSONL output, or ``None`` to use
+        the input path with ``.jsonl`` appended.
+    :param append: Whether to append to an existing output file.
+    :param to_stdout: Whether to write JSONL output to standard output.
+    """
     with open(in_path, "r", encoding="utf-8") as f:
         rows = _normalize_input(json.load(f))
 

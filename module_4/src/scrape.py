@@ -22,8 +22,12 @@ survey_url = urljoin(base_url, "/survey")
 
 def _new_applicant_item():
     """
-    Returns a dataframe of all the desired categories with default
-    None values for each
+    Create a new applicant record with all supported fields initialized
+    to ``None``.
+
+    :returns: A dictionary containing the fields used to represent a
+        scraped applicant record.
+    :rtype: dict
     """
 
     return {
@@ -49,7 +53,16 @@ def _new_applicant_item():
 
 def _load_data():
     """
-    Loads the previously scraped applicant data
+    Load previously scraped applicant records from the configured
+    JSON data file.
+
+    If the data file does not exist, an empty list is returned. The
+    loaded JSON value must be a list of records.
+
+    :returns: Previously stored applicant records, or an empty list if
+        the data file does not exist.
+    :rtype: list
+    :raises ValueError: If the loaded JSON value is not a list.
     """
 
     if not os.path.exists(data_file_name):
@@ -66,8 +79,14 @@ def _load_data():
 
 def save_data(data):
     """
-    Safely saves the applicant data by writing to a temporary file
-    first so a crash during writing doesn't destroy the previous checkpoint
+    Safely persist applicant data to the configured JSON file.
+
+    The data is first written to a temporary file and then moved into
+    place with ``os.replace`` so that a failure during the write is less
+    likely to destroy the previous checkpoint.
+
+    :param data: Applicant records to serialize to JSON.
+    :type data: list
     """
 
     temp_file = data_file_name + ".tmp"
@@ -80,7 +99,15 @@ def save_data(data):
 
 def _get_result_id(url):
     """
-    Extracts the Grad Cafe result ID from a result URL
+    Extract the numeric Grad Cafe result ID from a result URL.
+
+    URLs are expected to end with ``/result/<id>``. Invalid, missing, or
+    non-matching URLs return ``None``.
+
+    :param url: Grad Cafe result URL to inspect.
+    :type url: str or None
+    :returns: The numeric result ID, or ``None`` if it cannot be extracted.
+    :rtype: int or None
     """
 
     if not url:
@@ -96,8 +123,14 @@ def _get_result_id(url):
 
 def _get_highest_result_id(data):
     """
-    Finds the highest Grad Cafe result ID already
-    stored in the applicant data
+    Find the highest Grad Cafe result ID already stored in the applicant
+    data.
+
+    :param data: Previously scraped applicant records.
+    :type data: list
+    :returns: The highest result ID found, or ``0`` if no valid result IDs
+        are present.
+    :rtype: int
     """
 
     highest_result_id = 0
@@ -113,11 +146,21 @@ def _get_highest_result_id(data):
 
 def _initialize_chrome(url, port=chrome_port):
     """
-    Launches an instance of Chrome so the user can complete
-    Cloudflare's normal verification manually; the remote
-    debugging port is specified so that Selenium can later
-    attach to the browser, and unnecessary chrome background
-    activity isn't started to speed up Selenium
+    Launch a Chrome instance configured for Selenium remote debugging.
+
+    The browser uses the configured user profile so the user can complete
+    Cloudflare verification manually. Selenium can subsequently attach to
+    the running browser through the specified debugging port.
+
+    Several Chrome background services are disabled to reduce unnecessary
+    browser activity during scraping.
+
+    :param url: URL to open when Chrome starts.
+    :type url: str
+    :param port: Remote debugging port used by Selenium.
+    :type port: int
+    :returns: The subprocess representing the launched Chrome instance.
+    :rtype: subprocess.Popen
     """
 
     process = subprocess.Popen(
@@ -138,9 +181,18 @@ def _initialize_chrome(url, port=chrome_port):
 
 def _commandeer_chrome(port=chrome_port):
     """
-    Initializes a Selenium instance and attaches to
-    the currently running instance of Chrome through
-    the debug port
+    Create a Selenium WebDriver attached to an already running Chrome
+    instance through its remote debugging port.
+
+    The page load strategy is set to ``eager`` so Selenium can continue
+    once the initial HTML document has been loaded without waiting for
+    every page resource to finish.
+
+    :param port: Remote debugging port exposed by the running Chrome
+        instance.
+    :type port: int
+    :returns: A Selenium Chrome WebDriver attached to the existing browser.
+    :rtype: selenium.webdriver.Chrome
     """
 
     options = Options()
@@ -153,8 +205,21 @@ def _commandeer_chrome(port=chrome_port):
 
 def _scrape_survey_page(driver, url):
     """
-    Scrapes the current surey page for prospective
-    applicants to add to the database
+    Scrape a Grad Cafe survey page for result metadata and result URLs.
+
+    The page is loaded through the supplied Selenium driver. Applicant
+    metadata such as the date added, GPA, and start term is extracted from
+    the survey table, while result links and the pagination link are
+    collected separately.
+
+    :param driver: Selenium WebDriver used to load the survey page.
+    :type driver: selenium.webdriver.Chrome
+    :param url: Survey page URL to scrape.
+    :type url: str
+    :returns: A tuple containing survey table metadata, result URLs, and
+        the URL of the next survey page. The tuple has the form
+        ``(table_info, results, next_link)``.
+    :rtype: tuple
     """
 
     driver.get(url)
@@ -203,10 +268,20 @@ def _scrape_survey_page(driver, url):
 
 def _fetch_pages_in_browser(driver, urls):
     """
-    Fetches multiple result pages concurrently from inside
-    the already Cloudflare-verified Chrome session; Chrome
-    performs the requests using fetch(), which preserves
-    the browser's cookies/session
+    Fetch multiple result pages concurrently from within an existing
+    Cloudflare-verified Chrome session.
+
+    JavaScript ``fetch`` requests are executed inside the browser so the
+    browser's cookies and authenticated session can be reused. Each result
+    contains the requested URL, HTTP status, response HTML when available,
+    and an error message when the browser-side request fails.
+
+    :param driver: Selenium WebDriver attached to the active Chrome session.
+    :type driver: selenium.webdriver.Chrome
+    :param urls: Result page URLs to fetch.
+    :type urls: list[str]
+    :returns: Browser fetch results for each requested URL.
+    :rtype: list
     """
 
     if not urls:
@@ -259,9 +334,40 @@ def _fetch_pages_in_browser(driver, urls):
     return driver.execute_async_script(script, urls)
 
 
-def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=None):
+def _scrape_result_page_html(
+    html,
+    url,
+    date_added=None,
+    gpa=None,
+    start_term=None,
+):
     """
-    Parses a single applicant result page
+    Parse a single Grad Cafe applicant result page into a standardized
+    applicant record.
+
+    Applicant fields are extracted from the page's ``dd`` elements.
+    Status-specific dates are identified from the status field, while
+    optional survey metadata such as the date added, GPA, and start term
+    is supplied separately.
+
+    The result page is expected to contain at least ten ``dd`` elements.
+
+    :param html: HTML source for the applicant result page.
+    :type html: str
+    :param url: URL of the applicant result page.
+    :type url: str
+    :param date_added: Date the result was added to the survey, if known.
+    :type date_added: str or None
+    :param gpa: GPA extracted from the survey page, if available.
+    :type gpa: str or None
+    :param start_term: Starting academic term extracted from the survey
+        page, if available.
+    :type start_term: str or None
+    :returns: A standardized applicant record with missing values represented
+        by ``None``.
+    :rtype: dict
+    :raises ValueError: If the result page does not contain the expected
+        minimum number of fields.
     """
 
     item = _new_applicant_item()
@@ -318,7 +424,21 @@ def _scrape_result_page_html(html, url, date_added=None, gpa=None, start_term=No
 
 def _process_batch(driver, batch, existing_urls):
     """
-    Fetches and parses one batch of result pages
+    Fetch and parse one batch of applicant result pages.
+
+    Result pages are fetched through the active browser session, parsed into
+    applicant records, and filtered against URLs that have already been
+    stored. Successfully processed URLs are added to ``existing_urls`` to
+    prevent duplicate records during the current scraping run.
+
+    :param driver: Selenium WebDriver attached to the active Chrome session.
+    :type driver: selenium.webdriver.Chrome
+    :param batch: Applicant result metadata for the pages to process.
+    :type batch: list[dict]
+    :param existing_urls: Set of result URLs already stored or processed.
+    :type existing_urls: set
+    :returns: Newly parsed applicant records from the batch.
+    :rtype: list
     """
 
     urls = [item["url"] for item in batch]
@@ -369,9 +489,27 @@ def _process_batch(driver, batch, existing_urls):
 
 def scrape_data(survey_url, authentication_event=None):
     """
-    Loads previously scraped applicant data and then
-    scrapes only records newer than the newest result
-    already stored in the data file
+    Incrementally scrape Grad Cafe applicant data and persist checkpoints.
+
+    Previously stored applicant records are loaded first. The highest
+    existing result ID is used to determine where previously scraped data
+    ends, allowing the scraper to process only newer results. Result pages
+    are fetched in batches through a Chrome session that can be manually
+    authenticated through Cloudflare.
+
+    Progress is checkpointed to the configured JSON data file after each
+    batch and during recoverable errors. Scraping stops when an existing
+    result is reached, pagination ends, or a pagination loop is detected.
+
+    :param survey_url: URL of the Grad Cafe survey page from which scraping
+        should begin.
+    :type survey_url: str
+    :param authentication_event: Optional synchronization event that, when
+        provided, is waited on after Chrome is initialized and before
+        Selenium attaches to the browser.
+    :type authentication_event: threading.Event or None
+    :returns: The complete applicant dataset after the scraping run.
+    :rtype: list
     """
 
     data = _load_data()
@@ -522,7 +660,7 @@ def scrape_data(survey_url, authentication_event=None):
     return data
 
 
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     scrape_data(survey_url)
 
     print()

@@ -13,8 +13,23 @@ data_file_name = r"src\llm_extend_applicant_data.json"
 
 def load_data(input_path, limit=None):
     """
-    Load records from a JSON file
+    Load applicant records from a JSON file.
+
+    The input may either be a list of records or a dictionary containing
+    the records under a ``"rows"`` key. An optional limit can restrict
+    processing to the first specified number of records.
+
+    :param input_path: Path to the JSON input file.
+    :type input_path: str
+    :param limit: Maximum number of records to load, or ``None`` to load
+        all records.
+    :type limit: int or None
+    :returns: Loaded applicant records.
+    :rtype: list
+    :raises ValueError: If the loaded JSON value is neither a list nor a
+        dictionary containing a ``"rows"`` list.
     """
+
     with open(input_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -33,8 +48,19 @@ def load_data(input_path, limit=None):
 
 def _comparison_key(value):
     """
-    Normalizes for comparison (does not change the actual stored value
+    Normalize a value for canonical comparison without changing the
+    original stored value.
+
+    Whitespace is collapsed and the resulting value is converted to
+    lowercase so comparisons are insensitive to capitalization and
+    repeated whitespace.
+
+    :param value: Value to normalize for comparison.
+    :type value: object
+    :returns: Normalized comparison key.
+    :rtype: str
     """
+
     value = str(value or "")
     value = " ".join(value.split())
     return value.lower()
@@ -42,8 +68,18 @@ def _comparison_key(value):
 
 def _build_canonical_lookup(values):
     """
-    Compares a read value to the canon list
+    Build a normalized lookup dictionary for canonical values.
+
+    Each canonical value is indexed by its normalized comparison key while
+    the original canonical spelling is retained as the dictionary value.
+
+    :param values: Canonical values to index.
+    :type values: iterable
+    :returns: Mapping from normalized comparison keys to their original
+        canonical values.
+    :rtype: dict
     """
+
     lookup = {}
 
     for value in values:
@@ -54,24 +90,55 @@ def _build_canonical_lookup(values):
 
 def _get_canonical_program(value):
     """
-    Pulls the actual canonical program
+    Find the canonical program corresponding to an input value.
+
+    The comparison is case-insensitive and ignores differences in repeated
+    or surrounding whitespace.
+
+    :param value: Program name to compare against the canonical program list.
+    :type value: object
+    :returns: The canonical program name, or ``None`` if no match exists.
+    :rtype: str or None
     """
+
     CANON_PROG_LOOKUP = _build_canonical_lookup(CANON_PROGS)
     return CANON_PROG_LOOKUP.get(_comparison_key(value))
 
 
 def _get_canonical_university(value):
     """
-    Pulls the actual canonical university
+    Find the canonical university corresponding to an input value.
+
+    The comparison is case-insensitive and ignores differences in repeated
+    or surrounding whitespace.
+
+    :param value: University name to compare against the canonical
+        university list.
+    :type value: object
+    :returns: The canonical university name, or ``None`` if no match exists.
+    :rtype: str or None
     """
+
     CANON_UNI_LOOKUP = _build_canonical_lookup(CANON_UNIS)
     return CANON_UNI_LOOKUP.get(_comparison_key(value))
 
 
 def _is_already_cleaned(row):
     """
-    Checks whether a record has already been cleaned
+    Determine whether a record already contains both LLM-generated
+    standardized fields.
+
+    A record is considered already cleaned only when both
+    ``llm-generated-program`` and ``llm-generated-university`` contain
+    non-empty values.
+
+    :param row: Applicant record to inspect.
+    :type row: dict
+    :returns: ``True`` when both standardized fields are populated;
+        otherwise ``False``.
+    :rtype: bool
     """
+
     return row.get("llm-generated-program") not in (None, "") and row.get(
         "llm-generated-university"
     ) not in (None, "")
@@ -91,10 +158,45 @@ def _canon_check(
     both_matches,
 ):
     """
-    Checks to see if a program and university matches
-    canon values; if so, there's no need to run the LLM
-    on this entry
+    Resolve canonical program and university values, using the LLM only
+    for fields that do not already have canonical matches.
+
+    When both fields match canonical values, no LLM call is made. When only
+    one field matches, the canonical field is preserved while the LLM is
+    asked to standardize only the other field.
+
+    :param program_is_canonical: Whether the program already matches a
+        canonical value.
+    :type program_is_canonical: bool
+    :param university_is_canonical: Whether the university already matches
+        a canonical value.
+    :type university_is_canonical: bool
+    :param canonical_program: Canonical program value, if matched.
+    :type canonical_program: str or None
+    :param canonical_university: Canonical university value, if matched.
+    :type canonical_university: str or None
+    :param program_name: Original program name.
+    :type program_name: str
+    :param university: Original university name.
+    :type university: str
+    :param llm_calls: Current count of LLM calls.
+    :type llm_calls: int
+    :param skipped_llm: Current count of records for which the LLM was
+        skipped.
+    :type skipped_llm: int
+    :param program_matches: Current count of canonical program matches.
+    :type program_matches: int
+    :param university_matches: Current count of canonical university
+        matches.
+    :type university_matches: int
+    :param both_matches: Current count of records where both fields matched
+        canonical values.
+    :type both_matches: int
+    :returns: Standardized program and university values followed by the
+        updated processing counters.
+    :rtype: tuple
     """
+
     if program_is_canonical and university_is_canonical:
         standardized_program = canonical_program
         standardized_university = canonical_university
@@ -149,8 +251,33 @@ def _final_cleaning_stats(
     already_cleaned,
 ):
     """
-    Prints the results of the cleaning operation
+    Print summary statistics for a completed cleaning operation.
+
+    The summary includes canonical match counts, LLM usage, the number of
+    previously cleaned records, elapsed time, and average processing rate.
+
+    :param start_time: Timestamp captured when cleaning began.
+    :type start_time: float
+    :param total: Total number of records processed.
+    :type total: int
+    :param program_matches: Number of records with canonical program
+        matches.
+    :type program_matches: int
+    :param university_matches: Number of records with canonical university
+        matches.
+    :type university_matches: int
+    :param both_matches: Number of records where both fields matched
+        canonical values.
+    :type both_matches: int
+    :param llm_calls: Number of LLM calls performed.
+    :type llm_calls: int
+    :param skipped_llm: Number of records for which the LLM was skipped.
+    :type skipped_llm: int
+    :param already_cleaned: Number of records that already contained
+        standardized program and university values.
+    :type already_cleaned: int
     """
+
     print()
     print()
 
@@ -172,9 +299,23 @@ def _final_cleaning_stats(
 
 def clean_data(data):
     """
-    Cleans records sequentially using one LLM instance;
-    the records remain in their original input order.
+    Clean applicant records sequentially while preserving input order.
+
+    Records that already contain standardized program and university
+    values are retained without further processing. For other records,
+    canonical program and university lookups are performed first, and
+    the LLM is called only for fields that do not have canonical matches.
+
+    Processing progress and LLM usage statistics are printed while the
+    records are being cleaned. A final summary is printed after all
+    records have been processed.
+
+    :param data: Applicant records to clean.
+    :type data: list
+    :returns: Cleaned applicant records in their original input order.
+    :rtype: list
     """
+
     total = len(data)
 
     if total == 0:
@@ -289,9 +430,18 @@ def clean_data(data):
 
 def save_cleaned_data(data, output_path):
     """
-    Safely saves the cleaned applicant data by writing to a temporary
-    file first so a crash during writing doesn't destroy the previous data
+    Safely save cleaned applicant data to a JSON file.
+
+    The records are first written to a temporary file and then moved into
+    place with ``os.replace``. This reduces the risk of losing the previous
+    output file if the process fails while writing the new data.
+
+    :param data: Cleaned applicant records to save.
+    :type data: list
+    :param output_path: Destination path for the cleaned JSON data.
+    :type output_path: str
     """
+
     temp_file = output_path + ".tmp"
 
     with open(temp_file, "w", encoding="utf-8") as f:
