@@ -1,12 +1,13 @@
-Name                     Stmts   Miss  Cover
---------------------------------------------
-src\__init__.py              0      0   100%
-src\app.py                  83      0   100%
-src\clean.py               123      0   100%
-src\llm_hosting\app.py     161      0   100%
-src\load_data.py            88      0   100%
-src\models.py               34      0   100%
-src\orm_queries.py         129      0   100%
-src\scrape.py              234      0   100%
---------------------------------------------
-TOTAL                      852      0   100%
+Name                          Stmts   Miss  Cover
+-------------------------------------------------
+src\__init__.py                   0      0   100%
+src\app.py                       89      0   100%
+src\clean.py                    123      0   100%
+src\llm_hosting\__init__.py       0      0   100%
+src\llm_hosting\app.py          161      0   100%
+src\load_data.py                 89      0   100%
+src\models.py                    27      0   100%
+src\orm_queries.py              129      0   100%
+src\scrape.py                   234      0   100%
+-------------------------------------------------
+TOTAL                           852      0   100%
