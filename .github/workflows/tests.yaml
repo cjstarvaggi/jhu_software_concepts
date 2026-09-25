@@ -9,6 +9,21 @@ jobs:
     name: Run test suite
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: GradCafe
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d GradCafe"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -23,12 +38,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r module_4/requirements.txt
           pip install pytest pytest-cov
-          pip install llama-cpp-python
+
+      - name: Initialize database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
+          DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
+          PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
+        run: |
+          python module_4/src/load_data.py
 
       - name: Run test suite
         env:
-          PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src 
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
+          PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
         run: |
           pytest -m "web or buttons or analysis or db or integration" --cov=module_4/src
-
