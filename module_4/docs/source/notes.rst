@@ -9,4 +9,4 @@ be complete in under a minute.
 
 When running the full suite via the GitHub Actions pipeline, the full suite may take a few minutes to complete.
 This is primarily due to the fact that dependencies like cp-llama must be installed in the linux environment
-prior to actually executing the script
+prior to actually executing the script.
