@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Buttons &#8212; Module 4 1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=29a6c3e3"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Analysis Formatting" href="test_analysis_format.html" />
+    <link rel="prev" title="Flask Page" href="test_flask_page.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-tests.test_buttons">
+<span id="buttons"></span><h1>Buttons<a class="headerlink" href="#module-tests.test_buttons" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.reset_pull_thread">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">reset_pull_thread</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.reset_pull_thread" title="Link to this definition">¶</a></dt>
+<dd><p>Reset the global pull thread before and after each test.</p>
+<p>The application stores the active pull thread in a module-level
+variable. Resetting it prevents state from one test from affecting
+another test.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_fetch_pages_in_browser">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_fetch_pages_in_browser</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_fetch_pages_in_browser" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that multiple result pages are fetched in the browser.</p>
+<p>The browser’s asynchronous JavaScript execution should receive the
+requested URLs and use <code class="docutils literal notranslate"><span class="pre">Promise.all</span></code> to fetch them concurrently.
+The returned browser results should preserve the URL, status, and HTML
+for each request.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_fetch_pages_in_browser_empty_urls">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_fetch_pages_in_browser_empty_urls</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_fetch_pages_in_browser_empty_urls" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that an empty URL collection avoids browser execution.</p>
+<p>No asynchronous browser script should be executed when there are no
+result URLs to fetch.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_main_rolls_back_on_exception">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_main_rolls_back_on_exception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_main_rolls_back_on_exception" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that <code class="docutils literal notranslate"><span class="pre">main</span></code> rolls back the database transaction when an
+exception occurs during database processing.</p>
+<p>The test replaces the database connection with a fake connection whose
+cursor raises a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>. It verifies that <code class="docutils literal notranslate"><span class="pre">main</span></code> re-raises the
+exception and calls <code class="docutils literal notranslate"><span class="pre">rollback</span></code> on the database connection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> (<em>pytest.MonkeyPatch</em>) – Pytest fixture used to replace module dependencies.</p></li>
+<li><p><strong>tmp_path</strong> (<em>pathlib.Path</em>) – Pytest fixture providing a temporary directory for the
+test input JSON file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>AssertionError</strong> – If the transaction is not rolled back or if
+<code class="docutils literal notranslate"><span class="pre">commit</span></code> is called.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_new_applicant_item_defaults">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_new_applicant_item_defaults</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_new_applicant_item_defaults" title="Link to this definition">¶</a></dt>
+<dd><p>Verify the default structure of a newly created applicant record.</p>
+<p>The scraper’s empty applicant record should contain exactly 17 fields,
+with every value initialized to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_process_batch_adds_valid_records">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_process_batch_adds_valid_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_process_batch_adds_valid_records" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that valid result pages become applicant records.</p>
+<p>A successful browser response containing valid result-page HTML should
+be parsed into an applicant record. The processed URL should also be
+added to the set of existing URLs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace browser fetching.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_process_batch_skips_failed_and_existing_records">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_process_batch_skips_failed_and_existing_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capsys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_process_batch_skips_failed_and_existing_records" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that failed HTTP requests and existing records are skipped.</p>
+<p>An already processed URL should not produce a new record. A result
+page returning HTTP 500 should also be skipped and reported to standard
+output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace browser fetching.</p></li>
+<li><p><strong>capsys</strong> – Pytest fixture used to capture standard output.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_process_batch_skips_parse_errors">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_process_batch_skips_parse_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capsys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_process_batch_skips_parse_errors" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that malformed result pages are skipped after fetch.</p>
+<p>A successful HTTP response containing invalid result-page HTML should
+not produce an applicant record. The parser failure should be reported
+as a parse error containing the affected URL.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace browser fetching.</p></li>
+<li><p><strong>capsys</strong> – Pytest fixture used to capture standard output.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_pull_data_returns_busy_while_pull_is_running">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_pull_data_returns_busy_while_pull_is_running</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_pull_data_returns_busy_while_pull_is_running" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/pull-data</span></code> rejects a concurrent data pull.</p>
+<p>When the global pull thread reports that it is still alive, the
+endpoint should return HTTP 409 with <code class="docutils literal notranslate"><span class="pre">busy=True</span></code> rather than starting
+another pull.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_pull_data_returns_ok">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_pull_data_returns_ok</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_pull_data_returns_ok" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/pull-data</span></code> successfully starts a data pull.</p>
+<p>A configured pull function is used as a lightweight stand-in for the
+real background data-pull process. The endpoint should return HTTP 200
+and a JSON response containing <code class="docutils literal notranslate"><span class="pre">ok=True</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_pull_data_triggers_loader_with_scraper_rows">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_pull_data_triggers_loader_with_scraper_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_pull_data_triggers_loader_with_scraper_rows" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the pull pipeline passes scraper data to the SQL loader.</p>
+<p>The scraper and intermediate cleaning functions are replaced with
+test doubles. The fake scraper writes applicant rows to the configured
+JSON data file, and the fake loader reads that file. The rows received
+by the loader must match the rows produced by the scraper.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace application
+dependencies.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_pull_status_returns_status">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_pull_status_returns_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_pull_status_returns_status" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/pull-status</span></code> returns the current pull status.</p>
+<p>The response should be successful and contain both <code class="docutils literal notranslate"><span class="pre">state</span></code> and
+<code class="docutils literal notranslate"><span class="pre">message</span></code> fields.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_resume_pull_returns_ok">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_resume_pull_returns_ok</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_resume_pull_returns_ok" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/resume-pull</span></code> returns a successful response.</p>
+<p>The endpoint should return HTTP 200 and include <code class="docutils literal notranslate"><span class="pre">ok=True</span></code> in its
+JSON response.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_resume_pull_when_authenticating">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_resume_pull_when_authenticating</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_resume_pull_when_authenticating" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that an authentication-paused pull can be resumed.</p>
+<p>When the pull status is <code class="docutils literal notranslate"><span class="pre">authenticating</span></code>, the endpoint should change
+the state to <code class="docutils literal notranslate"><span class="pre">scraping</span></code>, update the status message, and signal the
+application’s authentication event.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_run_pull_completes_successfully">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_run_pull_completes_successfully</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_run_pull_completes_successfully" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the pull pipeline reaches the completed state.</p>
+<p>Scraping and cleaning are replaced with test doubles while the real
+SQL loader is invoked with transaction rollback enabled. After the
+pipeline finishes, the global pull status should indicate successful
+completion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace application
+dependencies.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_run_pull_handles_error">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_run_pull_handles_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_run_pull_handles_error" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that a pull exception is recorded as an error state.</p>
+<p>A scraper failure is injected into the pull pipeline. The global pull
+status should contain the <code class="docutils literal notranslate"><span class="pre">error</span></code> state and include the original
+exception message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace the scraper.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_commandeer_chrome">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_commandeer_chrome</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_commandeer_chrome" title="Link to this definition">¶</a></dt>
+<dd><p>Verify Selenium’s connection to the remote Chrome debugger.</p>
+<p>The test confirms that the configured debugger address uses the
+requested port and that Selenium is configured with an eager page-load
+strategy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace Selenium’s Chrome
+constructor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_moves_to_next_page">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_moves_to_next_page</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_moves_to_next_page" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the scraper follows survey pagination.</p>
+<p>The first survey page returns a second survey URL. The scraper should
+request both pages in order and stop when the second page has no next
+URL.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_processes_new_results">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_processes_new_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_processes_new_results" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that newly discovered result URLs are processed.</p>
+<p>The survey page supplies a new result URL and associated metadata.
+The result-processing function is mocked to return a parsed applicant
+record, which should appear in the final scraper output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_retries_after_survey_error">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_retries_after_survey_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capsys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_retries_after_survey_error" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that a survey-page failure is retried after five seconds.</p>
+<p>The first page request raises an exception and the second succeeds.
+The scraper should sleep for five seconds, save a checkpoint, print
+the expected error and retry messages, and ultimately return an empty
+result set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior
+and the sleep function.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+<li><p><strong>capsys</strong> – Pytest fixture used to capture standard output.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_skips_invalid_and_existing_urls">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_skips_invalid_and_existing_urls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_skips_invalid_and_existing_urls" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that invalid and already processed result URLs are skipped.</p>
+<p>A survey page containing both an invalid URL and an existing URL should
+not cause either URL to be passed to the batch processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_skips_invalid_result_id">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_skips_invalid_result_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_skips_invalid_result_id" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that result URLs with non-numeric IDs are ignored.</p>
+<p>The scraper should ignore an invalid result URL while processing the
+page normally. No applicant records are expected from the mocked batch
+processor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_stops_when_existing_data_reached">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_stops_when_existing_data_reached</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_stops_when_existing_data_reached" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that scraping stops when an existing result boundary is reached.</p>
+<p>Existing applicant data contains a result URL that is encountered by
+the survey scraper. No new records should be processed, and the
+existing records should be returned unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_stops_when_next_url_is_same">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_stops_when_next_url_is_same</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capsys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_stops_when_next_url_is_same" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that an unchanged next-page URL terminates scraping.</p>
+<p>This test covers the same loop-protection behavior using the current
+page URL supplied directly by the mocked survey-page scraper.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+<li><p><strong>capsys</strong> – Pytest fixture used to capture standard output.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_stops_when_next_url_matches_current_url">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_stops_when_next_url_matches_current_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capsys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_stops_when_next_url_matches_current_url" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that repeated pagination URLs do not cause an infinite loop.</p>
+<p>When a survey page reports itself as its own next page, the scraper
+should stop and print a warning explaining that the repeated URL is
+preventing further pagination.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+<li><p><strong>capsys</strong> – Pytest fixture used to capture standard output.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_data_waits_for_authentication">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_data_waits_for_authentication</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_data_waits_for_authentication" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that scraping waits for a supplied authentication event.</p>
+<p>A fake authentication event records whether its <code class="docutils literal notranslate"><span class="pre">wait()</span></code> method was
+called. The scraper should wait for the event before processing the
+survey page.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace scraper behavior.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_get_highest_result_id">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_get_highest_result_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_get_highest_result_id" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the highest valid result ID is selected.</p>
+<p>Invalid URLs and missing URL values should be ignored. An empty data
+collection should produce <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_get_result_id">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_get_result_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_get_result_id" title="Link to this definition">¶</a></dt>
+<dd><p>Verify extraction and validation of Grad Cafe result IDs.</p>
+<p>Valid result URLs should return their numeric ID. Empty, <code class="docutils literal notranslate"><span class="pre">None</span></code>,
+non-numeric, and trailing-slash URLs should return <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>url</strong> (<em>str</em><em> or </em><em>None</em>) – Result URL supplied to the parser.</p></li>
+<li><p><strong>expected</strong> (<em>int</em><em> or </em><em>None</em>) – Expected numeric result ID or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_initialize_chrome">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_initialize_chrome</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_initialize_chrome" title="Link to this definition">¶</a></dt>
+<dd><p>Verify the Chrome command used by the scraper.</p>
+<p><code class="docutils literal notranslate"><span class="pre">subprocess.Popen</span></code> is replaced with a fake implementation so the test
+can inspect the exact command-line arguments used to start Chrome.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace <code class="docutils literal notranslate"><span class="pre">subprocess.Popen</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_load_data">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_load_data" title="Link to this definition">¶</a></dt>
+<dd><p>Verify loading and validation of the scraper’s JSON data file.</p>
+<p>A missing file should produce an empty list. A JSON list should be
+returned unchanged, while a dictionary-shaped document should raise a
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to configure the scraper’s
+data-file path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_result_page_html">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_result_page_html</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_result_page_html" title="Link to this definition">¶</a></dt>
+<dd><p>Verify extraction of applicant fields from a result page.</p>
+<p>The parser should extract university, program, degree, nationality,
+status, acceptance date, GRE values, GPA, term, date added, URL, and
+comments from the supplied result-page HTML.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_result_page_html_edge_cases">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_result_page_html_edge_cases</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_result_page_html_edge_cases" title="Link to this definition">¶</a></dt>
+<dd><p>Verify handling of missing dates and invalid numeric values.</p>
+<p>An invalid acceptance date should produce <code class="docutils literal notranslate"><span class="pre">None</span></code> for the acceptance
+date, while an explicitly supplied invalid <code class="docutils literal notranslate"><span class="pre">date_added</span></code> value is
+preserved. Invalid GRE values should also become <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_result_page_html_rejects_unexpected_structure">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_result_page_html_rejects_unexpected_structure</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_result_page_html_rejects_unexpected_structure" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that malformed result-page HTML raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+<p>HTML that does not contain the expected applicant result-page
+structure should be rejected with an error identifying the unexpected
+structure.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_result_page_html_status_dates">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_result_page_html_status_dates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected_key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_result_page_html_status_dates" title="Link to this definition">¶</a></dt>
+<dd><p>Verify extraction of status-specific dates.</p>
+<p>Rejected, wait-listed, and interview statuses should store their
+associated date under the corresponding status-specific field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>status</strong> – Applicant status represented in the result page.</p></li>
+<li><p><strong>expected_key</strong> – Dictionary key where the status date should be
+stored.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_save_data">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_save_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_save_data" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that applicant data is persisted as valid JSON.</p>
+<p>The saved JSON should contain the supplied records, and the temporary
+<code class="docutils literal notranslate"><span class="pre">.tmp</span></code> file used during saving should not remain after the operation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to configure the scraper’s
+data-file path.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_survey_page">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_survey_page</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_survey_page" title="Link to this definition">¶</a></dt>
+<dd><p>Verify parsing of survey-page metadata, result URLs, and pagination.</p>
+<p>The fake survey page contains applicant metadata rows, result links,
+and a next-page link. The parser should extract dates, GPAs, terms,
+absolute result URLs, and the next survey URL while skipping an
+incomplete row.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_scrape_survey_page_skips_row_without_sibling">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_scrape_survey_page_skips_row_without_sibling</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_scrape_survey_page_skips_row_without_sibling" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that incomplete survey rows are ignored.</p>
+<p>A survey row without the expected sibling metadata row should not
+produce applicant information, result URLs, or a pagination URL.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_style_route">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_style_route</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_style_route" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the stylesheet endpoint returns CSS successfully.</p>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/style.css</span></code> should return HTTP 200 with a content type beginning
+with <code class="docutils literal notranslate"><span class="pre">text/css</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_update_analysis_returns_busy_and_does_not_update">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_update_analysis_returns_busy_and_does_not_update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_update_analysis_returns_busy_and_does_not_update" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that analysis updates are rejected while a pull is running.</p>
+<p>A fake active pull thread is installed and the configured analysis
+update function is monitored. The endpoint should return HTTP 409,
+indicate that the application is busy, and avoid invoking the update
+function.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_update_analysis_returns_ok_when_not_busy">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_update_analysis_returns_ok_when_not_busy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_update_analysis_returns_ok_when_not_busy" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that analysis updates succeed when no pull is active.</p>
+<p>The endpoint should return HTTP 200 and a JSON response containing
+<code class="docutils literal notranslate"><span class="pre">ok=True</span></code>.</p>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Module 4</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../testing.html">Testing Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../testing.html#test-markers">Test Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../testing.html#test-reference">Test Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../notes.html">Operational Notes</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../testing.html">Testing Guide</a><ul>
+      <li>Previous: <a href="test_flask_page.html" title="previous chapter">Flask Page</a></li>
+      <li>Next: <a href="test_analysis_format.html" title="next chapter">Analysis Formatting</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Carl Starvaggi.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/tests/test_buttons.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

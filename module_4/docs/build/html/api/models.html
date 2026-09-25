@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>ORM Model &#8212; Module 4 1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=29a6c3e3"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ORM Queries" href="orm_queries.html" />
+    <link rel="prev" title="Database" href="database.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.models">
+<span id="orm-model"></span><h1>ORM Model<a class="headerlink" href="#module-src.models" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.models.Applicant">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">src.models.</span></span><span class="sig-name descname"><span class="pre">Applicant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.models.Applicant" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></p>
+<p>SQLAlchemy ORM model for the existing <code class="docutils literal notranslate"><span class="pre">applicants</span></code> database table.</p>
+<p>The model maps applicant records to their corresponding PostgreSQL
+columns and uses <code class="docutils literal notranslate"><span class="pre">p_id</span></code> as the primary key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p_id</strong> – Unique identifier for the applicant record.</p></li>
+<li><p><strong>program</strong> – Applicant’s program name.</p></li>
+<li><p><strong>university</strong> – Applicant’s university.</p></li>
+<li><p><strong>comments</strong> – Applicant’s comments or additional information.</p></li>
+<li><p><strong>date_added</strong> – Date the applicant record was added.</p></li>
+<li><p><strong>url</strong> – URL of the applicant’s source record.</p></li>
+<li><p><strong>status</strong> – Applicant’s application status.</p></li>
+<li><p><strong>term</strong> – Application start term.</p></li>
+<li><p><strong>us_or_international</strong> – Applicant nationality or international status.</p></li>
+<li><p><strong>gpa</strong> – Applicant’s GPA.</p></li>
+<li><p><strong>gre</strong> – Applicant’s overall GRE score.</p></li>
+<li><p><strong>gre_v</strong> – Applicant’s GRE verbal score.</p></li>
+<li><p><strong>gre_aw</strong> – Applicant’s GRE analytical writing score.</p></li>
+<li><p><strong>degree</strong> – Applicant’s degree type.</p></li>
+<li><p><strong>llm_generated_program</strong> – LLM-generated standardized program name.</p></li>
+<li><p><strong>llm_generated_university</strong> – LLM-generated standardized university
+name.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Module 4</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api_reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="scrape.html">Scrape Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="clean.html">Clean Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="load_data.html">Load Data</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="database.html">Database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html">Web Application</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes.html">Operational Notes</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api_reference.html">API Reference</a><ul>
+  <li><a href="database.html">Database</a><ul>
+      <li>Previous: <a href="database.html" title="previous chapter">Database</a></li>
+      <li>Next: <a href="orm_queries.html" title="next chapter">ORM Queries</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Carl Starvaggi.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/api/models.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

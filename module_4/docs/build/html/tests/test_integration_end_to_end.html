@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Integration &#8212; Module 4 1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=29a6c3e3"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Operational Notes" href="../notes.html" />
+    <link rel="prev" title="Database Writes" href="test_db_insert.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-tests.test_integration_end_to_end">
+<span id="integration"></span><h1>Integration<a class="headerlink" href="#module-tests.test_integration_end_to_end" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.app">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.app" title="Link to this definition">¶</a></dt>
+<dd><p>Create a Flask application configured for integration testing.</p>
+<p>The application’s <code class="docutils literal notranslate"><span class="pre">UPDATE_FUNCTION</span></code> is replaced with a no-op because
+the analysis page calculates its results directly from the PostgreSQL
+data during rendering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace <code class="docutils literal notranslate"><span class="pre">UPDATE_FUNCTION</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Flask test application.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.clean_data_file">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">clean_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.clean_data_file" title="Link to this definition">¶</a></dt>
+<dd><p>Create an empty applicant-data file in an isolated temporary directory.</p>
+<p>The current working directory is changed to the temporary directory so
+that file paths used by the application remain isolated from the real
+project data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary directory.</p></li>
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to change the working directory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the temporary applicant-data JSON file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.client">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">client</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.client" title="Link to this definition">¶</a></dt>
+<dd><p>Create a Flask test client for the integration test application.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app</strong> – Flask application fixture.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Flask test client.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.db_connection">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">db_connection</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.db_connection" title="Link to this definition">¶</a></dt>
+<dd><p>Connect to the PostgreSQL database used by the application.</p>
+<p>The connection string is taken from <code class="docutils literal notranslate"><span class="pre">load_data.DATABASE_URL</span></code> when
+configured. Otherwise, the individual database connection settings
+from <code class="docutils literal notranslate"><span class="pre">load_data</span></code> are used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A PostgreSQL connection available to the test.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_best_match_branches">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_best_match_branches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_best_match_branches" title="Link to this definition">¶</a></dt>
+<dd><p>Verify the empty-input, no-match, and exact-match branches.</p>
+<p>The test confirms that <code class="docutils literal notranslate"><span class="pre">_best_match</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code> when either
+input is empty or no candidate meets the cutoff, and returns the exact
+candidate when a valid match is found.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_call_llm_invalid_json_and_no_normalization">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_call_llm_invalid_json_and_no_normalization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_call_llm_invalid_json_and_no_normalization" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that invalid LLM JSON falls back to the original input values.</p>
+<p>Normalization is disabled for both fields, so the original program and
+university values should be returned when the LLM response cannot be
+parsed as valid JSON.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM loader.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_call_llm_json_object_with_normalization">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_call_llm_json_object_with_normalization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_call_llm_json_object_with_normalization" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that parsed LLM output is normalized against canonical values.</p>
+<p>The fake LLM returns an embedded JSON object containing abbreviated or
+non-canonical values. The test verifies that the returned values are
+normalized to the configured canonical program and university names.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM loader and
+canonical value lists.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_canonical_match_branches">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_canonical_match_branches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_canonical_match_branches" title="Link to this definition">¶</a></dt>
+<dd><p>Verify canonical matching for empty, missing, and normalized inputs.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_cli_process_file_closes_sink_on_error">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_cli_process_file_closes_sink_on_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_cli_process_file_closes_sink_on_error" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that CLI processing leaves the output file available after an error.</p>
+<p>The LLM call is forced to raise an exception. The test verifies that the
+exception propagates while the output file has still been created.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM call.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing temporary input and output
+paths.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_cli_process_file_default_output_path">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_cli_process_file_default_output_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_cli_process_file_default_output_path" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that CLI processing derives the default JSONL output path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM call.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing the temporary input directory.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_cli_process_file_to_stdout">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_cli_process_file_to_stdout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capsys</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_cli_process_file_to_stdout" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that CLI file processing writes standardized records to stdout.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM call.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary directory.</p></li>
+<li><p><strong>capsys</strong> – Pytest fixture used to capture standard output.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_cli_process_file_writes_and_appends">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_cli_process_file_writes_and_appends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_cli_process_file_writes_and_appends" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that CLI file processing writes and appends JSONL output.</p>
+<p>The first invocation creates the output file and writes one record. The
+second invocation uses append mode and verifies that the file then
+contains two records.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM call.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing temporary input and output
+paths.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_end_to_end_pull_update_render">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_end_to_end_pull_update_render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_connection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_data_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_end_to_end_pull_update_render" title="Link to this definition">¶</a></dt>
+<dd><p>Verify the complete data-pull, cleaning, database, and analysis flow.</p>
+<p>The test replaces the real scraper with a fake scraper that supplies
+multiple applicant records. It then verifies that the records pass
+through the background pull process into PostgreSQL, that the analysis
+update succeeds, and that the rendered analysis contains the expected
+calculated values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>client</strong> – Flask test client used to exercise application routes.</p></li>
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the real scraper.</p></li>
+<li><p><strong>db_connection</strong> – PostgreSQL connection used to inspect and restore
+database contents.</p></li>
+<li><p><strong>clean_data_file</strong> – Temporary JSON file used by the fake scraper.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_health_endpoint">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_health_endpoint</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_health_endpoint" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the LLM service health endpoint returns a successful response.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_load_data_clean_float_none">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_load_data_clean_float_none</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_load_data_clean_float_none" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that cleaning a <code class="docutils literal notranslate"><span class="pre">None</span></code> numeric value returns <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_load_data_invalid_p_id">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_load_data_invalid_p_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_load_data_invalid_p_id" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that a record with a non-numeric result ID is rejected.</p>
+<p>The test supplies a result URL whose identifier is not numeric and
+verifies that <code class="docutils literal notranslate"><span class="pre">_transform_record</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_load_llm_cached">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_load_llm_cached</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_load_llm_cached" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that an already-loaded LLM instance is returned unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to provide the cached LLM object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_load_llm_initializes">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_load_llm_initializes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_load_llm_initializes" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that the LLM is initialized with the configured model settings.</p>
+<p>The model download and <code class="docutils literal notranslate"><span class="pre">Llama</span></code> constructor are replaced with test
+doubles. The test confirms that the downloaded model path and configured
+context, thread, GPU-layer, and verbosity settings are passed to the
+constructor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace model-loading
+dependencies.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_main_file_entrypoint">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_main_file_entrypoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_main_file_entrypoint" title="Link to this definition">¶</a></dt>
+<dd><p>Verify the <code class="docutils literal notranslate"><span class="pre">--file</span></code> CLI entry point passes the expected arguments.</p>
+<p>The file-processing function is replaced with a test double so that the
+test can verify the parsed input path, output path, append flag, and
+stdout flag without performing actual LLM processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the file processor and
+configure command-line arguments.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing temporary input and output paths.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_main_serve_entrypoint">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_main_serve_entrypoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_main_serve_entrypoint" title="Link to this definition">¶</a></dt>
+<dd><p>Verify the <code class="docutils literal notranslate"><span class="pre">--serve</span></code> CLI entry point starts Flask with the expected settings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace <code class="docutils literal notranslate"><span class="pre">app.run</span></code>, modify
+command-line arguments, and configure the port environment variable.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_multiple_pulls_are_idempotent_for_overlapping_data">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_multiple_pulls_are_idempotent_for_overlapping_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_connection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_data_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_multiple_pulls_are_idempotent_for_overlapping_data" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that overlapping pulls do not create duplicate applicants.</p>
+<p>The first pull inserts two applicants. The second pull contains one
+applicant with an existing <code class="docutils literal notranslate"><span class="pre">p_id</span></code> and one new applicant. The test
+verifies that the existing applicant is updated, the new applicant is
+inserted, and the total row count is three.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>client</strong> – Flask test client used to exercise the pull endpoint.</p></li>
+<li><p><strong>db_connection</strong> – PostgreSQL connection used to inspect and restore
+database contents.</p></li>
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace the real scraper.</p></li>
+<li><p><strong>clean_data_file</strong> – Temporary JSON file used by the fake scraper.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_normalize_input_branches">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_normalize_input_branches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_normalize_input_branches" title="Link to this definition">¶</a></dt>
+<dd><p>Verify supported input shapes and invalid-input handling.</p>
+<p>The test confirms that lists are returned unchanged, dictionaries with
+a list under <code class="docutils literal notranslate"><span class="pre">rows</span></code> are unwrapped, and invalid <code class="docutils literal notranslate"><span class="pre">rows</span></code> values or
+<code class="docutils literal notranslate"><span class="pre">None</span></code> result in an empty list.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_post_normalize_program_branches">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_post_normalize_program_branches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_post_normalize_program_branches" title="Link to this definition">¶</a></dt>
+<dd><p>Verify program normalization across canonical and fuzzy matches.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to provide a controlled canonical
+program list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_post_normalize_university_branches">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_post_normalize_university_branches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_post_normalize_university_branches" title="Link to this definition">¶</a></dt>
+<dd><p>Verify university normalization across matching and fallback cases.</p>
+<p>The test covers fuzzy abbreviations, misspellings, whitespace and
+case normalization, canonical values, unknown universities, and an
+empty input.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to provide a controlled canonical
+university list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_read_lines_missing_file">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_read_lines_missing_file</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_read_lines_missing_file" title="Link to this definition">¶</a></dt>
+<dd><p>Verify that reading a missing file returns an empty list.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_integration_end_to_end.test_standardize_endpoint">
+<span class="sig-prename descclassname"><span class="pre">tests.test_integration_end_to_end.</span></span><span class="sig-name descname"><span class="pre">test_standardize_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_integration_end_to_end.test_standardize_endpoint" title="Link to this definition">¶</a></dt>
+<dd><p>Verify standardization behavior for known and unknown input values.</p>
+<p>Known canonical values should disable normalization when passed to the
+LLM, while unknown values should request normalization for both the
+program and university.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace the LLM call and
+canonical value lists.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Module 4</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../testing.html">Testing Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../testing.html#test-markers">Test Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../testing.html#test-reference">Test Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../notes.html">Operational Notes</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../testing.html">Testing Guide</a><ul>
+      <li>Previous: <a href="test_db_insert.html" title="previous chapter">Database Writes</a></li>
+      <li>Next: <a href="../notes.html" title="next chapter">Operational Notes</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Carl Starvaggi.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/tests/test_integration_end_to_end.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

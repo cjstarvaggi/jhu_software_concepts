@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATA_FILE = os.getenv("APPLICANT_DATA_FILE")
-DATABASE_URL = os.getenv("POSTGRES_URL")
+DATA_FILE = os.getenv("DATA_FILE")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 CREATE_TABLE_SQL = """
