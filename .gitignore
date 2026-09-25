@@ -6,3 +6,4 @@
 *.zip
 **models**/
 *.pytest_cache
+.coverage

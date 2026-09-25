@@ -1,7 +1,7 @@
 import pytest
 import json
 
-from src import app as app_module, scrape
+from src import app as app_module, scrape, load_data
 from src.app import create_app
 from src.load_data import main as load_sql_data
 
@@ -1306,3 +1306,81 @@ def test_process_batch_skips_parse_errors(monkeypatch, capsys):
 
     assert "PARSE ERROR:" in output
     assert url in output
+
+
+@pytest.mark.integration
+def test_main_rolls_back_on_exception(monkeypatch, tmp_path):
+    """
+    Verify that ``main`` rolls back the database transaction when an
+    exception occurs during database processing.
+
+    The test replaces the database connection with a fake connection whose
+    cursor raises a ``RuntimeError``. It verifies that ``main`` re-raises the
+    exception and calls ``rollback`` on the database connection.
+
+    :param monkeypatch: Pytest fixture used to replace module dependencies.
+    :type monkeypatch: pytest.MonkeyPatch
+    :param tmp_path: Pytest fixture providing a temporary directory for the
+        test input JSON file.
+    :type tmp_path: pathlib.Path
+    :raises AssertionError: If the transaction is not rolled back or if
+        ``commit`` is called.
+    """
+
+    data_file = tmp_path / "applicants.json"
+    data_file.write_text(
+        json.dumps(
+            [
+                {
+                    "url": "https://www.thegradcafe.com/result/12345",
+                    "program_name": "Computer Science",
+                    "university": "Johns Hopkins University",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    class FakeCursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+        def execute(self, *args, **kwargs):
+            raise RuntimeError("database error")
+
+    class FakeConnection:
+        def __init__(self):
+            self.rollback_called = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+        def cursor(self):
+            return FakeCursor()
+
+        def rollback(self):
+            self.rollback_called = True
+
+        def commit(self):
+            raise AssertionError("commit should not be called")
+
+    connection = FakeConnection()
+
+    monkeypatch.setattr(load_data, "DATA_FILE", str(data_file))
+    monkeypatch.setattr(load_data, "DATABASE_URL", "fake-database-url")
+    monkeypatch.setattr(
+        load_data.psycopg,
+        "connect",
+        lambda connection_string: connection,
+    )
+
+    with pytest.raises(RuntimeError, match="database error"):
+        load_data.main()
+
+    assert connection.rollback_called

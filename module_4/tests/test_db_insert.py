@@ -10,6 +10,7 @@ from src.load_data import _get_p_id, _transform_record, _clean_float
 from src import clean, load_data
 from src.models import Session
 import src.orm_queries as orm_queries
+from src.orm_queries import _question_2
 
 
 BASE_URL = "https://www.thegradcafe.com"
@@ -36,7 +37,6 @@ REQUIRED_FIELDS = [
 
 
 @pytest.fixture
-@pytest.mark.db
 def db_connection():
     """Connect to the PostgreSQL database used by the application.
 
@@ -1068,3 +1068,82 @@ def test_load_data_transform_record_invalid_numeric_values():
     assert record["gre"] is None
     assert record["gre_v"] is None
     assert record["gre_aw"] is None
+
+
+@pytest.mark.db
+def test_question_2_no_nationality_classifications():
+    """
+    Verify that ``_question_2`` returns ``N/A`` when no applicants have
+    nationality classifications.
+
+    Existing applicant rows are saved, the table is temporarily cleared,
+    and ``_question_2`` is called to exercise the ``total == 0`` branch.
+    The original rows are restored after the test.
+
+    :raises AssertionError: If the function does not return the expected
+        ``N/A`` result.
+    """
+    with Session() as session:
+        rows = session.execute(
+            text("SELECT * FROM applicants")
+        ).mappings().all()
+
+        try:
+            session.execute(text("TRUNCATE TABLE applicants"))
+            session.commit()
+
+            result = _question_2(session, print_string=False)
+
+            assert result == (
+                "Percent international: N/A "
+                "(no nationality classifications)"
+            )
+        finally:
+            session.rollback()
+
+            for row in rows:
+                session.execute(
+                    text(
+                        """
+                        INSERT INTO applicants (
+                            p_id,
+                            program,
+                            university,
+                            comments,
+                            date_added,
+                            url,
+                            status,
+                            term,
+                            us_or_international,
+                            gpa,
+                            gre,
+                            gre_v,
+                            gre_aw,
+                            degree,
+                            llm_generated_program,
+                            llm_generated_university
+                        )
+                        VALUES (
+                            :p_id,
+                            :program,
+                            :university,
+                            :comments,
+                            :date_added,
+                            :url,
+                            :status,
+                            :term,
+                            :us_or_international,
+                            :gpa,
+                            :gre,
+                            :gre_v,
+                            :gre_aw,
+                            :degree,
+                            :llm_generated_program,
+                            :llm_generated_university
+                        )
+                        """
+                    ),
+                    dict(row),
+                )
+
+            session.commit()
