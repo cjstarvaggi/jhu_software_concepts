@@ -5,6 +5,7 @@ import threading
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from clean import clean_data, load_data as load_clean_data
+import load_data
 from load_data import main as load_sql_data
 from models import Session
 from orm_queries import (
@@ -114,7 +115,13 @@ def _run_pull():
             "Loading new applicant data into PostgreSQL..."
         )
 
-        load_sql_data()
+        previous_data_file = load_data.DATA_FILE
+
+        try:
+            load_data.DATA_FILE = APPLICANT_DATA_FILE
+            load_sql_data()
+        finally:
+            load_data.DATA_FILE = previous_data_file
 
         pull_status["state"] = "complete"
         pull_status["message"] = "Data pull completed successfully."
