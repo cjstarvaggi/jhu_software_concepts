@@ -1,4 +1,4 @@
-name: tests
+name: Tests
 
 on:
   push:
@@ -21,10 +21,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov psycopg[binary]
+          pip install -r module_4/requirements.txt
+          pip install pytest pytest-cov
 
       - name: Run test suite
         env:
           PYTHONPATH: ${{ github.workspace }}/module_4
         run: |
           pytest -m "web or buttons or analysis or db or integration" --cov=module_4/src
+
