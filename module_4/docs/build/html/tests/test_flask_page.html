@@ -1,43 +1,102 @@
+
+
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<html lang="en" data-content_root="../">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flask Page &mdash; Module 4 1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
-    <title>Flask Page &#8212; Module 4 1 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
-    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <script src="../_static/documentation_options.js?v=29a6c3e3"></script>
-    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
-    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=29a6c3e3"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Buttons" href="test_buttons.html" />
-    <link rel="prev" title="Testing Guide" href="../testing.html" />
-   
-  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
-  
+    <link rel="prev" title="Testing Guide" href="../testing.html" /> 
+</head>
 
-  
-  
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
 
-  </head><body>
-  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
           
+          
+          <a href="../index.html" class="icon icon-home">
+            Module 4
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../testing.html">Testing Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../testing.html#test-markers">Test Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../testing.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../testing.html#test-reference">Test Reference</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Flask Page</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tests.test_flask_page.test_analysis_page_loads"><code class="docutils literal notranslate"><span class="pre">test_analysis_page_loads()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tests.test_flask_page.test_app_factory_and_routes"><code class="docutils literal notranslate"><span class="pre">test_app_factory_and_routes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tests.test_flask_page.test_app_main_block"><code class="docutils literal notranslate"><span class="pre">test_app_main_block()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="test_buttons.html">Buttons</a></li>
+<li class="toctree-l3"><a class="reference internal" href="test_analysis_format.html">Analysis Formatting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="test_db_insert.html">Database Writes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="test_integration_end_to_end.html">Integration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../notes.html">Operational Notes</a></li>
+</ul>
 
-          <div class="body" role="main">
-            
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Module 4</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../testing.html">Testing Guide</a></li>
+      <li class="breadcrumb-item active">Flask Page</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tests/test_flask_page.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
   <section id="module-tests.test_flask_page">
-<span id="flask-page"></span><h1>Flask Page<a class="headerlink" href="#module-tests.test_flask_page" title="Link to this heading">¶</a></h1>
+<span id="flask-page"></span><h1>Flask Page<a class="headerlink" href="#module-tests.test_flask_page" title="Link to this heading"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="tests.test_flask_page.test_analysis_page_loads">
-<span class="sig-prename descclassname"><span class="pre">tests.test_flask_page.</span></span><span class="sig-name descname"><span class="pre">test_analysis_page_loads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_flask_page.test_analysis_page_loads" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">tests.test_flask_page.</span></span><span class="sig-name descname"><span class="pre">test_analysis_page_loads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_flask_page.test_analysis_page_loads" title="Link to this definition"></a></dt>
 <dd><p>Verify that the analysis page renders successfully.</p>
 <p>The test checks that the <code class="docutils literal notranslate"><span class="pre">/analysis</span></code> endpoint returns a successful
 response containing the page title, data-pull and analysis-update
@@ -46,7 +105,7 @@ controls, answer output, and the expected <code class="docutils literal notransl
 
 <dl class="py function">
 <dt class="sig sig-object py" id="tests.test_flask_page.test_app_factory_and_routes">
-<span class="sig-prename descclassname"><span class="pre">tests.test_flask_page.</span></span><span class="sig-name descname"><span class="pre">test_app_factory_and_routes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_flask_page.test_app_factory_and_routes" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">tests.test_flask_page.</span></span><span class="sig-name descname"><span class="pre">test_app_factory_and_routes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_flask_page.test_app_factory_and_routes" title="Link to this definition"></a></dt>
 <dd><p>Verify that the Flask application factory registers all required routes.</p>
 <p>The application is created in testing mode and its URL map is inspected
 to ensure that the data-pull, authentication-resume, status, analysis,
@@ -55,7 +114,7 @@ analysis-update, and stylesheet routes are registered.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="tests.test_flask_page.test_app_main_block">
-<span class="sig-prename descclassname"><span class="pre">tests.test_flask_page.</span></span><span class="sig-name descname"><span class="pre">test_app_main_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_flask_page.test_app_main_block" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">tests.test_flask_page.</span></span><span class="sig-name descname"><span class="pre">test_app_main_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_flask_page.test_app_main_block" title="Link to this definition"></a></dt>
 <dd><p>Verify that the Flask application’s main entry point executes.</p>
 <p><code class="docutils literal notranslate"><span class="pre">Flask.run</span></code> is replaced with a no-op so that executing <code class="docutils literal notranslate"><span class="pre">src/app.py</span></code>
 as <code class="docutils literal notranslate"><span class="pre">__main__</span></code> does not start a development server. The test confirms
@@ -70,81 +129,34 @@ that the module’s main block can therefore be executed successfully.</p>
 </section>
 
 
+           </div>
           </div>
-          
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../testing.html" class="btn btn-neutral float-left" title="Testing Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="test_buttons.html" class="btn btn-neutral float-right" title="Buttons" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Carl Starvaggi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="Main">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../index.html">Module 4</a></h1>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
 
-
-
-
-
-
-
-
-
-<search id="searchbox" style="display: none" role="search">
-    <div class="searchformwrapper">
-    <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../testing.html">Testing Guide</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../testing.html#test-markers">Test Markers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../testing.html#running-tests">Running Tests</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="../testing.html#test-reference">Test Reference</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../notes.html">Operational Notes</a></li>
-</ul>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="../index.html">Documentation overview</a><ul>
-  <li><a href="../testing.html">Testing Guide</a><ul>
-      <li>Previous: <a href="../testing.html" title="previous chapter">Testing Guide</a></li>
-      <li>Next: <a href="test_buttons.html" title="next chapter">Buttons</a></li>
-  </ul></li>
-  </ul></li>
-</ul>
-</div>
-
-
-
-
-
-
-
-
-        </div>
-      </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &#169;2026, Carl Starvaggi.
-      
-      |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
-      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
-      
-      |
-      <a href="../_sources/tests/test_flask_page.rst.txt"
-          rel="nofollow">Page source</a>
-    </div>
-
-    
-
-    
-  </body>
+</body>
 </html>
