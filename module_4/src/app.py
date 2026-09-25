@@ -114,16 +114,7 @@ def _run_pull():
             "Loading new applicant data into PostgreSQL..."
         )
 
-        previous_data_file = os.environ.get("DATA_FILE")
-
-        try:
-            os.environ["DATA_FILE"] = APPLICANT_DATA_FILE
-            load_sql_data()
-        finally:
-            if previous_data_file is None:
-                os.environ.pop("DATA_FILE", None)
-            else:
-                os.environ["DATA_FILE"] = previous_data_file
+        load_sql_data()
 
         pull_status["state"] = "complete"
         pull_status["message"] = "Data pull completed successfully."

@@ -274,7 +274,7 @@ def _transform_record(applicant):
     }
 
 
-def main(rollback=False):
+def main(rollback=False, data_file=None):
     """
     Load applicant data from JSON and synchronize it with PostgreSQL.
 
@@ -294,9 +294,11 @@ def main(rollback=False):
         or writing applicant data.
     """
 
-    print(f"Loading data from {DATA_FILE}...")
+    data_file = data_file or DATA_FILE
 
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
+    print(f"Loading data from {data_file}...")
+
+    with open(data_file, "r", encoding="utf-8") as file:
         applicants = json.load(file)
 
     connection_string = DATABASE_URL
