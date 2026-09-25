@@ -67,4 +67,10 @@ def test_app_main_block(monkeypatch):
     with open(app_path, encoding="utf-8") as file:
         source = file.read()
 
-    exec(compile(source, app_path, "exec"), {"__name__": "__main__"})
+    exec(
+        compile(source, app_path, "exec"),
+        {
+            "__name__": "__main__",
+            "__file__": app_path,
+        },
+    )

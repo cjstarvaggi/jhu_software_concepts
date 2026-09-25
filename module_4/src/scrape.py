@@ -12,7 +12,10 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 batch_size = 20
-data_file_name = os.path.join("src", "llm_extend_applicant_data.json")
+data_file_name = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "llm_extend_applicant_data.json",
+)
 chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 chrome_profile = r"C:\temp\selenium-chrome"
 chrome_port = 9222
@@ -51,7 +54,7 @@ def _new_applicant_item():
     }
 
 
-def _load_data():
+def _load_data(file_path=None):
     """
     Load previously scraped applicant records from the configured
     JSON data file.
@@ -65,10 +68,12 @@ def _load_data():
     :raises ValueError: If the loaded JSON value is not a list.
     """
 
-    if not os.path.exists(data_file_name):
+    file_path = file_path or data_file_name
+
+    if not os.path.exists(file_path):
         return []
 
-    with open(data_file_name, "r", encoding="utf-8") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
 
     if not isinstance(data, list):
@@ -77,7 +82,7 @@ def _load_data():
     return data
 
 
-def save_data(data):
+def save_data(data, file_path=None):
     """
     Safely persist applicant data to the configured JSON file.
 
@@ -89,12 +94,16 @@ def save_data(data):
     :type data: list
     """
 
-    temp_file = data_file_name + ".tmp"
+    print("SAVE DATA FILE:", file_path)
+    print("TEMP FILE:", (file_path or data_file_name) + ".tmp")
+
+    file_path = file_path or data_file_name
+    temp_file = file_path + ".tmp"
 
     with open(temp_file, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=2, ensure_ascii=False)
 
-    os.replace(temp_file, data_file_name)
+    os.replace(temp_file, file_path)
 
 
 def _get_result_id(url):
@@ -487,7 +496,11 @@ def _process_batch(driver, batch, existing_urls):
     return records
 
 
-def scrape_data(survey_url, authentication_event=None):
+def scrape_data(
+    survey_url,
+    authentication_event=None,
+    data_file=None,
+):
     """
     Incrementally scrape Grad Cafe applicant data and persist checkpoints.
 
@@ -512,7 +525,9 @@ def scrape_data(survey_url, authentication_event=None):
     :rtype: list
     """
 
-    data = _load_data()
+    data_file = data_file or data_file_name
+
+    data = _load_data(data_file)
 
     existing_urls = {item["url"] for item in data if item.get("url")}
 
@@ -554,7 +569,7 @@ def scrape_data(survey_url, authentication_event=None):
                 print()
                 print(f"ERROR loading survey page " f"{page_number}:")
                 print(e)
-                save_data(data)
+                save_data(data, data_file)
                 print("Data checkpoint saved")
                 print("Retrying in 5 seconds...")
 
@@ -615,7 +630,7 @@ def scrape_data(survey_url, authentication_event=None):
 
                 print(f"TOTAL: {len(data):,}")
 
-                save_data(data)
+                save_data(data, data_file)
 
                 print("Data checkpoint saved")
 
@@ -629,7 +644,7 @@ def scrape_data(survey_url, authentication_event=None):
                 print()
                 print(f"WARNING: No Next link found " f"on page {page_number}")
                 print("Scraping stopped safely")
-                save_data(data)
+                save_data(data, data_file)
 
                 break
 
@@ -637,7 +652,7 @@ def scrape_data(survey_url, authentication_event=None):
                 print()
                 print("WARNING: Next URL is the same " "as the current URL")
                 print("Stopping to prevent an infinite loop")
-                save_data(data)
+                save_data(data, data_file)
 
                 break
 
@@ -650,7 +665,7 @@ def scrape_data(survey_url, authentication_event=None):
             time.sleep(0.2)
 
     finally:
-        save_data(data)
+        save_data(data, data_file)
         print()
         print(f"New records: {new_records:,}")
         print(f"Total records: {len(data):,}")

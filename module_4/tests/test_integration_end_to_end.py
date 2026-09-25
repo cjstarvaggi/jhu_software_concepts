@@ -256,22 +256,25 @@ def test_end_to_end_pull_update_render(
         ),
     ]
 
-    def fake_scraper(survey_url, authentication_event=None):
+    def fake_scraper(survey_url, authentication_event=None, data_file=None):
         """Write fake applicant records to the test data file.
 
         :param survey_url: Survey URL supplied by the application.
         :param authentication_event: Optional authentication event supplied
             by the application.
+        :param data_file: Optional output file supplied by the application.
         :returns: The fake applicant records used by the integration test.
         """
+        output_file = data_file or str(clean_data_file)
+
         print(f"FAKE SCRAPER cwd: {os.getcwd()}")
-        print(f"FAKE SCRAPER path: {clean_data_file}")
-        
-        with open(clean_data_file, "w", encoding="utf-8") as file:
+        print(f"FAKE SCRAPER path: {output_file}")
+
+        with open(output_file, "w", encoding="utf-8") as file:
             json.dump(records, file, ensure_ascii=False, indent=2)
 
-        print(f"FILE EXISTS: {clean_data_file.exists()}")
-        print(f"FILE SIZE: {clean_data_file.stat().st_size}")
+        print(f"FILE EXISTS: {os.path.exists(output_file)}")
+        print(f"FILE SIZE: {os.path.getsize(output_file)}")
 
         return records
 
@@ -450,7 +453,7 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
 
     pull_count = 0
 
-    def fake_scraper(survey_url, authentication_event=None):
+    def fake_scraper(survey_url, authentication_event=None, data_file=None):
         """Return records for the current simulated pull.
 
         The first invocation returns the initial records and subsequent
@@ -460,6 +463,7 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
         :param survey_url: Survey URL supplied by the application.
         :param authentication_event: Optional authentication event supplied
             by the application.
+        :param data_file: Optional output file supplied by the application.
         :returns: Applicant records for the current simulated pull.
         """
         nonlocal pull_count
@@ -472,7 +476,9 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
             else second_pull_records
         )
 
-        with open(clean_data_file, "w", encoding="utf-8") as file:
+        output_file = data_file or str(clean_data_file)
+
+        with open(output_file, "w", encoding="utf-8") as file:
             json.dump(
                 records,
                 file,

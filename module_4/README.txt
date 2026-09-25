@@ -11,8 +11,8 @@ Due Date: 09/27/2026
 2. Install the required Python packages: pip install -r requirements.txt
 3. Navigate to https://jhu-software-concepts-m4-cs.readthedocs.io/en/latest/
 4. From the project root, cd to the src folder; create a .env file containing 
-the PostgreSQL database connection information using the info on the readthedocs 
-site above.
+the PostgreSQL database connection information using the info in the Overview
+& Setup section on the readthedocs site above.
 5. From the project root, cd to the src folder; then run python -m app
 6. Run the full test suite from the project root using the command:
 pytest -m "web or buttons or analysis or db or integration" --cov=src

@@ -23,7 +23,10 @@ from orm_queries import (
 )
 from scrape import scrape_data, survey_url
 
-APPLICANT_DATA_FILE = os.path.join("src", "llm_extend_applicant_data.json")
+APPLICANT_DATA_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "llm_extend_applicant_data.json",
+)
 
 pull_status = {
     "state": "idle",
@@ -87,9 +90,13 @@ def _run_pull():
             "then click Resume Pulling."
         )
 
+        print("SCRAPE MODULE:", scrape_data.__module__)
+        print("SCRAPE FILE:", scrape_data.__code__.co_filename)
+
         scrape_data(
             survey_url,
             authentication_event=authentication_event,
+            data_file=APPLICANT_DATA_FILE,
         )
 
         pull_status["state"] = "cleaning"
