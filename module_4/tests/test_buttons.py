@@ -10,9 +10,46 @@ BASE_URL = "https://www.thegradcafe.com"
 RESULT_URL = f"{BASE_URL}/result/12345"
 SURVEY_URL = f"{BASE_URL}/survey"
 
+VALID_BATCH_HTML = """
+<dl>
+    <dd>Johns Hopkins University</dd>
+    <dd>Computer Science</dd>
+    <dd>PhD</dd>
+    <dd>US</dd>
+    <dd>Accepted</dd>
+    <dd>09/23/2026</dd>
+    <dd>Unused</dd>
+    <dd>320</dd>
+    <dd>160</dd>
+    <dd>4.5</dd>
+</dl>
+"""
+
+RESULT_HTML = """
+<dl>
+    <dd>Johns Hopkins University</dd>
+    <dd>Computer Science</dd>
+    <dd>PhD</dd>
+    <dd>US</dd>
+    <dd>Accepted</dd>
+    <dd>Accepted on 09/15/2026</dd>
+    <dd>Unused</dd>
+    <dd>320</dd>
+    <dd>160</dd>
+    <dd>4.5</dd>
+    <dd>Test applicant comments</dd>
+</dl>
+<p>Notes</p>
+"""
 
 @pytest.mark.buttons
 def test_pull_data_returns_ok():
+    """Verify that ``POST /pull-data`` successfully starts a data pull.
+
+    A configured pull function is used as a lightweight stand-in for the
+    real background data-pull process. The endpoint should return HTTP 200
+    and a JSON response containing ``ok=True``.
+    """
     def fake_pull():
         return None
 
@@ -32,6 +69,13 @@ def test_pull_data_returns_ok():
 
 @pytest.mark.buttons
 def test_update_analysis_returns_busy_and_does_not_update():
+    """Verify that analysis updates are rejected while a pull is running.
+
+    A fake active pull thread is installed and the configured analysis
+    update function is monitored. The endpoint should return HTTP 409,
+    indicate that the application is busy, and avoid invoking the update
+    function.
+    """
     update_called = False
 
     def fake_update():
@@ -61,6 +105,17 @@ def test_update_analysis_returns_busy_and_does_not_update():
 
 @pytest.mark.buttons
 def test_pull_data_triggers_loader_with_scraper_rows(monkeypatch, tmp_path):
+    """Verify that the pull pipeline passes scraper data to the SQL loader.
+
+    The scraper and intermediate cleaning functions are replaced with
+    test doubles. The fake scraper writes applicant rows to the configured
+    JSON data file, and the fake loader reads that file. The rows received
+    by the loader must match the rows produced by the scraper.
+
+    :param monkeypatch: Pytest fixture used to replace application
+        dependencies.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     scraper_rows = [
         {"url": "test1"},
         {"url": "test2"},
@@ -106,6 +161,12 @@ def test_pull_data_triggers_loader_with_scraper_rows(monkeypatch, tmp_path):
 
 @pytest.mark.buttons
 def test_pull_data_returns_busy_while_pull_is_running():
+    """Verify that ``POST /pull-data`` rejects a concurrent data pull.
+
+    When the global pull thread reports that it is still alive, the
+    endpoint should return HTTP 409 with ``busy=True`` rather than starting
+    another pull.
+    """
     def fake_pull():
         return None
 
@@ -131,6 +192,12 @@ def test_pull_data_returns_busy_while_pull_is_running():
 
 @pytest.fixture(autouse=True)
 def reset_pull_thread():
+    """Reset the global pull thread before and after each test.
+
+    The application stores the active pull thread in a module-level
+    variable. Resetting it prevents state from one test from affecting
+    another test.
+    """
     app_module.pull_thread = None
     yield
     app_module.pull_thread = None
@@ -138,6 +205,11 @@ def reset_pull_thread():
 
 @pytest.mark.buttons
 def test_update_analysis_returns_ok_when_not_busy():
+    """Verify that analysis updates succeed when no pull is active.
+
+    The endpoint should return HTTP 200 and a JSON response containing
+    ``ok=True``.
+    """
     app = create_app({"TESTING": True})
 
     with app.test_client() as client:
@@ -149,6 +221,17 @@ def test_update_analysis_returns_ok_when_not_busy():
 
 @pytest.mark.buttons
 def test_run_pull_completes_successfully(monkeypatch, tmp_path):
+    """Verify that the pull pipeline reaches the completed state.
+
+    Scraping and cleaning are replaced with test doubles while the real
+    SQL loader is invoked with transaction rollback enabled. After the
+    pipeline finishes, the global pull status should indicate successful
+    completion.
+
+    :param monkeypatch: Pytest fixture used to replace application
+        dependencies.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     test_json = tmp_path / "llm_extend_applicant_data.json"
 
     monkeypatch.setattr(
@@ -175,7 +258,6 @@ def test_run_pull_completes_successfully(monkeypatch, tmp_path):
         lambda data: data,
     )
 
-    # Use the REAL database loader, but roll back its transaction.
     monkeypatch.setattr(
         app_module,
         "load_sql_data",
@@ -193,6 +275,14 @@ def test_run_pull_completes_successfully(monkeypatch, tmp_path):
 
 @pytest.mark.buttons
 def test_run_pull_handles_error(monkeypatch):
+    """Verify that a pull exception is recorded as an error state.
+
+    A scraper failure is injected into the pull pipeline. The global pull
+    status should contain the ``error`` state and include the original
+    exception message.
+
+    :param monkeypatch: Pytest fixture used to replace the scraper.
+    """
     def failing_scrape(*args, **kwargs):
         raise RuntimeError("test failure")
 
@@ -206,6 +296,11 @@ def test_run_pull_handles_error(monkeypatch):
 
 @pytest.mark.buttons
 def test_pull_status_returns_status():
+    """Verify that ``GET /pull-status`` returns the current pull status.
+
+    The response should be successful and contain both ``state`` and
+    ``message`` fields.
+    """
     app = create_app({"TESTING": True})
 
     with app.test_client() as client:
@@ -220,6 +315,11 @@ def test_pull_status_returns_status():
 
 @pytest.mark.buttons
 def test_resume_pull_returns_ok():
+    """Verify that ``POST /resume-pull`` returns a successful response.
+
+    The endpoint should return HTTP 200 and include ``ok=True`` in its
+    JSON response.
+    """
     app = create_app({"TESTING": True})
 
     with app.test_client() as client:
@@ -233,6 +333,12 @@ def test_resume_pull_returns_ok():
 
 @pytest.mark.buttons
 def test_resume_pull_when_authenticating():
+    """Verify that an authentication-paused pull can be resumed.
+
+    When the pull status is ``authenticating``, the endpoint should change
+    the state to ``scraping``, update the status message, and signal the
+    application's authentication event.
+    """
     app = create_app({"TESTING": True})
 
     app_module.pull_status["state"] = "authenticating"
@@ -254,6 +360,11 @@ def test_resume_pull_when_authenticating():
 
 @pytest.mark.web
 def test_style_route():
+    """Verify that the stylesheet endpoint returns CSS successfully.
+
+    ``GET /style.css`` should return HTTP 200 with a content type beginning
+    with ``text/css``.
+    """
     app = create_app({"TESTING": True})
 
     with app.test_client() as client:
@@ -262,8 +373,17 @@ def test_style_route():
     assert response.status_code == 200
     assert response.content_type.startswith("text/css")
 
+
 @pytest.mark.buttons
 def _mock_driver(monkeypatch):
+    """Replace Chrome initialization with a lightweight fake driver.
+
+    The helper prevents scraper tests from launching a real Chrome process
+    or connecting to an actual browser.
+
+    :param monkeypatch: Pytest fixture used to replace Chrome-related
+        scraper functions.
+    """
     class FakeDriver:
         def quit(self):
             pass
@@ -271,8 +391,18 @@ def _mock_driver(monkeypatch):
     monkeypatch.setattr(scrape, "_initialize_chrome", lambda url: object())
     monkeypatch.setattr(scrape, "_commandeer_chrome", lambda: FakeDriver())
 
+
 @pytest.mark.buttons
 def test_scrape_data_stops_when_existing_data_reached(monkeypatch, tmp_path):
+    """Verify that scraping stops when an existing result boundary is reached.
+
+    Existing applicant data contains a result URL that is encountered by
+    the survey scraper. No new records should be processed, and the
+    existing records should be returned unchanged.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     path = tmp_path / "data.json"
     existing = {"url": f"{BASE_URL}/result/100"}
 
@@ -291,8 +421,18 @@ def test_scrape_data_stops_when_existing_data_reached(monkeypatch, tmp_path):
 
     assert scrape.scrape_data(SURVEY_URL) == [existing]
 
+
 @pytest.mark.buttons
 def test_scrape_data_processes_new_results(monkeypatch, tmp_path):
+    """Verify that newly discovered result URLs are processed.
+
+    The survey page supplies a new result URL and associated metadata.
+    The result-processing function is mocked to return a parsed applicant
+    record, which should appear in the final scraper output.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
@@ -325,8 +465,18 @@ def test_scrape_data_processes_new_results(monkeypatch, tmp_path):
     assert result[0]["url"] == url
     assert result[0]["program_name"] == "Computer Science"
 
+
 @pytest.mark.buttons
 def test_scrape_data_moves_to_next_page(monkeypatch, tmp_path):
+    """Verify that the scraper follows survey pagination.
+
+    The first survey page returns a second survey URL. The scraper should
+    request both pages in order and stop when the second page has no next
+    URL.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
@@ -346,7 +496,7 @@ def test_scrape_data_moves_to_next_page(monkeypatch, tmp_path):
             else ([], [], None)
         )
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page",fake_scrape_page)
+    monkeypatch.setattr(scrape, "_scrape_survey_page", fake_scrape_page)
 
     assert scrape.scrape_data(first) == []
     assert calls == [first, second]
@@ -354,6 +504,18 @@ def test_scrape_data_moves_to_next_page(monkeypatch, tmp_path):
 
 @pytest.mark.buttons
 def test_scrape_data_retries_after_survey_error(monkeypatch, tmp_path, capsys):
+    """Verify that a survey-page failure is retried after five seconds.
+
+    The first page request raises an exception and the second succeeds.
+    The scraper should sleep for five seconds, save a checkpoint, print
+    the expected error and retry messages, and ultimately return an empty
+    result set.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior
+        and the sleep function.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
@@ -391,6 +553,14 @@ def test_scrape_data_retries_after_survey_error(monkeypatch, tmp_path, capsys):
 
 @pytest.mark.buttons
 def test_scrape_data_skips_invalid_and_existing_urls(monkeypatch, tmp_path):
+    """Verify that invalid and already processed result URLs are skipped.
+
+    A survey page containing both an invalid URL and an existing URL should
+    not cause either URL to be passed to the batch processor.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     path = tmp_path / "data.json"
     existing_url = f"{BASE_URL}/result/200"
     existing = {"url": existing_url}
@@ -416,8 +586,18 @@ def test_scrape_data_skips_invalid_and_existing_urls(monkeypatch, tmp_path):
 
     assert scrape.scrape_data(SURVEY_URL) == [existing]
 
+
 @pytest.mark.buttons
 def test_scrape_data_skips_invalid_result_id(monkeypatch, tmp_path):
+    """Verify that result URLs with non-numeric IDs are ignored.
+
+    The scraper should ignore an invalid result URL while processing the
+    page normally. No applicant records are expected from the mocked batch
+    processor.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
@@ -441,8 +621,19 @@ def test_scrape_data_skips_invalid_result_id(monkeypatch, tmp_path):
 
     assert scrape.scrape_data(SURVEY_URL) == []
 
+
 @pytest.mark.buttons
 def test_scrape_data_stops_when_next_url_matches_current_url(monkeypatch, tmp_path, capsys):
+    """Verify that repeated pagination URLs do not cause an infinite loop.
+
+    When a survey page reports itself as its own next page, the scraper
+    should stop and print a warning explaining that the repeated URL is
+    preventing further pagination.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
@@ -468,15 +659,25 @@ def test_scrape_data_stops_when_next_url_matches_current_url(monkeypatch, tmp_pa
     assert "WARNING: Next URL is the same " in output
     assert "Stopping to prevent an infinite loop" in output
 
+
 @pytest.mark.buttons
-def test_scrape_data_stops_when_next_url_is_same(monkeypatch, tmp_path,capsys):
+def test_scrape_data_stops_when_next_url_is_same(monkeypatch, tmp_path, capsys):
+    """Verify that an unchanged next-page URL terminates scraping.
+
+    This test covers the same loop-protection behavior using the current
+    page URL supplied directly by the mocked survey-page scraper.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
     monkeypatch.setattr(scrape, "data_file_name", str(path))
     _mock_driver(monkeypatch)
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page",
+    monkeypatch.setattr(scrape,"_scrape_survey_page",
         lambda driver, url: (
             [],
             [],
@@ -491,8 +692,18 @@ def test_scrape_data_stops_when_next_url_is_same(monkeypatch, tmp_path,capsys):
     assert "WARNING: Next URL is the same as the current URL" in output
     assert "Stopping to prevent an infinite loop" in output
 
+
 @pytest.mark.buttons
 def test_scrape_data_waits_for_authentication(monkeypatch, tmp_path):
+    """Verify that scraping waits for a supplied authentication event.
+
+    A fake authentication event records whether its ``wait()`` method was
+    called. The scraper should wait for the event before processing the
+    survey page.
+
+    :param monkeypatch: Pytest fixture used to replace scraper behavior.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
@@ -520,8 +731,14 @@ def test_scrape_data_waits_for_authentication(monkeypatch, tmp_path):
 
     assert event.wait_called is True
 
+
 @pytest.mark.buttons
 def test_new_applicant_item_defaults():
+    """Verify the default structure of a newly created applicant record.
+
+    The scraper's empty applicant record should contain exactly 17 fields,
+    with every value initialized to ``None``.
+    """
     item = scrape._new_applicant_item()
 
     assert len(item) == 17
@@ -530,8 +747,19 @@ def test_new_applicant_item_defaults():
     for key in ["program_name", "university", "gre_score", "gpa"]:
         assert item[key] is None
 
+
 @pytest.mark.buttons
 def test_scrape_load_data(tmp_path, monkeypatch):
+    """Verify loading and validation of the scraper's JSON data file.
+
+    A missing file should produce an empty list. A JSON list should be
+    returned unchanged, while a dictionary-shaped document should raise a
+    ``ValueError``.
+
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    :param monkeypatch: Pytest fixture used to configure the scraper's
+        data-file path.
+    """
     path = tmp_path / "applicants.json"
     monkeypatch.setattr(scrape, "data_file_name", str(path))
 
@@ -547,8 +775,18 @@ def test_scrape_load_data(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="Applicant data must be a list of records."):
         scrape._load_data()
 
+
 @pytest.mark.buttons
 def test_scrape_save_data(tmp_path, monkeypatch):
+    """Verify that applicant data is persisted as valid JSON.
+
+    The saved JSON should contain the supplied records, and the temporary
+    ``.tmp`` file used during saving should not remain after the operation.
+
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    :param monkeypatch: Pytest fixture used to configure the scraper's
+        data-file path.
+    """
     path = tmp_path / "applicants.json"
     monkeypatch.setattr(scrape, "data_file_name", str(path))
 
@@ -564,6 +802,7 @@ def test_scrape_save_data(tmp_path, monkeypatch):
     assert not (tmp_path / "applicants.json.tmp").exists()
 
 
+@pytest.mark.buttons
 @pytest.mark.parametrize(
     "url, expected",
     [
@@ -575,10 +814,26 @@ def test_scrape_save_data(tmp_path, monkeypatch):
     ],
 )
 def test_scrape_get_result_id(url, expected):
+    """Verify extraction and validation of Grad Cafe result IDs.
+
+    Valid result URLs should return their numeric ID. Empty, ``None``,
+    non-numeric, and trailing-slash URLs should return ``None``.
+
+    :param url: Result URL supplied to the parser.
+    :type url: str or None
+    :param expected: Expected numeric result ID or ``None``.
+    :type expected: int or None
+    """
     assert scrape._get_result_id(url) == expected
+
 
 @pytest.mark.buttons
 def test_scrape_get_highest_result_id():
+    """Verify that the highest valid result ID is selected.
+
+    Invalid URLs and missing URL values should be ignored. An empty data
+    collection should produce ``0``.
+    """
     data = [
         {"url": f"{BASE_URL}/result/123"},
         {"url": f"{BASE_URL}/result/456"},
@@ -590,8 +845,16 @@ def test_scrape_get_highest_result_id():
     assert scrape._get_highest_result_id(data) == 789
     assert scrape._get_highest_result_id([]) == 0
 
+
 @pytest.mark.buttons
 def test_scrape_initialize_chrome(monkeypatch):
+    """Verify the Chrome command used by the scraper.
+
+    ``subprocess.Popen`` is replaced with a fake implementation so the test
+    can inspect the exact command-line arguments used to start Chrome.
+
+    :param monkeypatch: Pytest fixture used to replace ``subprocess.Popen``.
+    """
     captured = {}
 
     class FakeProcess:
@@ -617,8 +880,18 @@ def test_scrape_initialize_chrome(monkeypatch):
         "https://example.com",
     ]
 
+
 @pytest.mark.buttons
 def test_scrape_commandeer_chrome(monkeypatch):
+    """Verify Selenium's connection to the remote Chrome debugger.
+
+    The test confirms that the configured debugger address uses the
+    requested port and that Selenium is configured with an eager page-load
+    strategy.
+
+    :param monkeypatch: Pytest fixture used to replace Selenium's Chrome
+        constructor.
+    """
     captured = {}
 
     class FakeDriver:
@@ -640,8 +913,16 @@ def test_scrape_commandeer_chrome(monkeypatch):
     )
     assert captured["options"].page_load_strategy == "eager"
 
+
 @pytest.mark.buttons
 def test_scrape_survey_page():
+    """Verify parsing of survey-page metadata, result URLs, and pagination.
+
+    The fake survey page contains applicant metadata rows, result links,
+    and a next-page link. The parser should extract dates, GPAs, terms,
+    absolute result URLs, and the next survey URL while skipping an
+    incomplete row.
+    """
     class FakeDriver:
         page_source = """
         <table>
@@ -694,8 +975,14 @@ def test_scrape_survey_page():
     ]
     assert next_url == f"{BASE_URL}/survey?page=2"
 
+
 @pytest.mark.buttons
 def test_scrape_survey_page_skips_row_without_sibling():
+    """Verify that incomplete survey rows are ignored.
+
+    A survey row without the expected sibling metadata row should not
+    produce applicant information, result URLs, or a pagination URL.
+    """
     class FakeDriver:
         page_source = """
         <table>
@@ -717,25 +1004,14 @@ def test_scrape_survey_page_skips_row_without_sibling():
     assert next_url is None
 
 
-RESULT_HTML = """
-<dl>
-    <dd>Johns Hopkins University</dd>
-    <dd>Computer Science</dd>
-    <dd>PhD</dd>
-    <dd>US</dd>
-    <dd>Accepted</dd>
-    <dd>Accepted on 09/15/2026</dd>
-    <dd>Unused</dd>
-    <dd>320</dd>
-    <dd>160</dd>
-    <dd>4.5</dd>
-    <dd>Test applicant comments</dd>
-</dl>
-<p>Notes</p>
-"""
-
 @pytest.mark.buttons
 def test_scrape_result_page_html():
+    """Verify extraction of applicant fields from a result page.
+
+    The parser should extract university, program, degree, nationality,
+    status, acceptance date, GRE values, GPA, term, date added, URL, and
+    comments from the supplied result-page HTML.
+    """
     result = scrape._scrape_result_page_html(
         RESULT_HTML,
         RESULT_URL,
@@ -765,6 +1041,7 @@ def test_scrape_result_page_html():
         assert result[key] == value
 
 
+@pytest.mark.buttons
 @pytest.mark.parametrize(
     "status, expected_key",
     [
@@ -774,6 +1051,15 @@ def test_scrape_result_page_html():
     ],
 )
 def test_scrape_result_page_html_status_dates(status, expected_key):
+    """Verify extraction of status-specific dates.
+
+    Rejected, wait-listed, and interview statuses should store their
+    associated date under the corresponding status-specific field.
+
+    :param status: Applicant status represented in the result page.
+    :param expected_key: Dictionary key where the status date should be
+        stored.
+    """
     html = f"""
     <dl>
         <dd>University</dd>
@@ -793,8 +1079,15 @@ def test_scrape_result_page_html_status_dates(status, expected_key):
 
     assert result[expected_key] == "09/15/2026"
 
+
 @pytest.mark.buttons
 def test_scrape_result_page_html_edge_cases():
+    """Verify handling of missing dates and invalid numeric values.
+
+    An invalid acceptance date should produce ``None`` for the acceptance
+    date, while an explicitly supplied invalid ``date_added`` value is
+    preserved. Invalid GRE values should also become ``None``.
+    """
     html = """
     <dl>
         <dd>University</dd>
@@ -822,8 +1115,15 @@ def test_scrape_result_page_html_edge_cases():
     for key in ["gre_score", "gre_v_score", "gre_aw"]:
         assert result[key] is None
 
+
 @pytest.mark.buttons
 def test_scrape_result_page_html_rejects_unexpected_structure():
+    """Verify that malformed result-page HTML raises ``ValueError``.
+
+    HTML that does not contain the expected applicant result-page
+    structure should be rejected with an error identifying the unexpected
+    structure.
+    """
     with pytest.raises(
         ValueError,
         match="Unexpected result page structure",
@@ -833,8 +1133,16 @@ def test_scrape_result_page_html_rejects_unexpected_structure():
             RESULT_URL,
         )
 
+
 @pytest.mark.buttons
 def test_fetch_pages_in_browser():
+    """Verify that multiple result pages are fetched in the browser.
+
+    The browser's asynchronous JavaScript execution should receive the
+    requested URLs and use ``Promise.all`` to fetch them concurrently.
+    The returned browser results should preserve the URL, status, and HTML
+    for each request.
+    """
     class FakeDriver:
         def execute_async_script(self, script, urls):
             self.script = script
@@ -859,8 +1167,14 @@ def test_fetch_pages_in_browser():
     assert driver.urls == urls
     assert "Promise.all" in driver.script
 
+
 @pytest.mark.buttons
 def test_fetch_pages_in_browser_empty_urls():
+    """Verify that an empty URL collection avoids browser execution.
+
+    No asynchronous browser script should be executed when there are no
+    result URLs to fetch.
+    """
     class FakeDriver:
         def execute_async_script(self, *args):
             raise AssertionError("Browser script should not run")
@@ -868,23 +1182,16 @@ def test_fetch_pages_in_browser_empty_urls():
     assert scrape._fetch_pages_in_browser(FakeDriver(), []) == []
 
 
-VALID_BATCH_HTML = """
-<dl>
-    <dd>Johns Hopkins University</dd>
-    <dd>Computer Science</dd>
-    <dd>PhD</dd>
-    <dd>US</dd>
-    <dd>Accepted</dd>
-    <dd>09/23/2026</dd>
-    <dd>Unused</dd>
-    <dd>320</dd>
-    <dd>160</dd>
-    <dd>4.5</dd>
-</dl>
-"""
-
 @pytest.mark.buttons
 def test_process_batch_adds_valid_records(monkeypatch):
+    """Verify that valid result pages become applicant records.
+
+    A successful browser response containing valid result-page HTML should
+    be parsed into an applicant record. The processed URL should also be
+    added to the set of existing URLs.
+
+    :param monkeypatch: Pytest fixture used to replace browser fetching.
+    """
     batch = [{
         "url": RESULT_URL,
         "date_added": "Sep 23, 2026",
@@ -909,8 +1216,18 @@ def test_process_batch_adds_valid_records(monkeypatch):
     assert records[0]["program_name"] == "Computer Science"
     assert RESULT_URL in existing_urls
 
+
 @pytest.mark.buttons
 def test_process_batch_skips_failed_and_existing_records(monkeypatch, capsys):
+    """Verify that failed HTTP requests and existing records are skipped.
+
+    An already processed URL should not produce a new record. A result
+    page returning HTTP 500 should also be skipped and reported to standard
+    output.
+
+    :param monkeypatch: Pytest fixture used to replace browser fetching.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     existing_url = f"{BASE_URL}/result/11111"
     failed_url = f"{BASE_URL}/result/22222"
 
@@ -951,8 +1268,18 @@ def test_process_batch_skips_failed_and_existing_records(monkeypatch, capsys):
     assert "FAILED:" in output
     assert "(HTTP 500)" in output
 
+
 @pytest.mark.buttons
 def test_process_batch_skips_parse_errors(monkeypatch, capsys):
+    """Verify that malformed result pages are skipped after fetch.
+
+    A successful HTTP response containing invalid result-page HTML should
+    not produce an applicant record. The parser failure should be reported
+    as a parse error containing the affected URL.
+
+    :param monkeypatch: Pytest fixture used to replace browser fetching.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     url = f"{BASE_URL}/result/33333"
 
     monkeypatch.setattr(

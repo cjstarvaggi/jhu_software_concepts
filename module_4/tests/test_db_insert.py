@@ -36,9 +36,13 @@ REQUIRED_FIELDS = [
 
 
 @pytest.fixture
+@pytest.mark.db
 def db_connection():
-    """
-    Connect to the same PostgreSQL database used by the application.
+    """Connect to the PostgreSQL database used by the application.
+
+    :returns: A PostgreSQL connection configured from the application's
+        database settings.
+    :rtype: psycopg.Connection
     """
     connection_string = load_data.DATABASE_URL or (
         f"host={load_data.DB_HOST} "
@@ -51,8 +55,22 @@ def db_connection():
     with psycopg.connect(connection_string) as conn:
         yield conn
 
+
 @pytest.mark.db
 def test_insert_on_pull(db_connection, monkeypatch, tmp_path):
+    """Verify that a valid applicant record is inserted into PostgreSQL.
+
+    The test writes a valid applicant record to a temporary JSON file,
+    runs the database loader, and verifies that the transformed record
+    is inserted into the ``applicants`` table with all expected fields
+    populated.
+
+    :param db_connection: Connection to the application's PostgreSQL
+        database.
+    :param monkeypatch: Pytest fixture used to replace the application's
+        input data path.
+    :param tmp_path: Temporary directory used for the applicant JSON file.
+    """
     with db_connection.cursor() as cursor:
         cursor.execute("SELECT * FROM applicants;")
         rows = cursor.fetchall()
@@ -135,18 +153,29 @@ def test_insert_on_pull(db_connection, monkeypatch, tmp_path):
         )
     db_connection.commit()
 
+
 @pytest.mark.db
 def test_duplicate_pull_does_not_create_duplicates(
     db_connection, monkeypatch, tmp_path
 ):
+    """Verify that loading the same applicant twice does not duplicate it.
 
+    The applicant data is loaded twice using the same ``p_id``.  The test
+    verifies that only one database row exists for that applicant after
+    both loads.
+
+    :param db_connection: Connection to the application's PostgreSQL
+        database.
+    :param monkeypatch: Pytest fixture used to replace the input data path.
+    :param tmp_path: Temporary directory used for the applicant JSON file.
+    """
     with db_connection.cursor() as cursor:
         cursor.execute("SELECT * FROM applicants;")
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
         cursor.execute("TRUNCATE TABLE applicants;")
     db_connection.commit()
-    
+
     applicant_data = [
         {
             "url": "https://www.thegradcafe.com/result/123456",
@@ -204,13 +233,18 @@ def test_duplicate_pull_does_not_create_duplicates(
         )
     db_connection.commit()
 
+
 @pytest.mark.db
 def test_get_applicant_returns_expected_dict(db_connection):
-    """
-    Test that get_applicant() returns a dictionary containing all required
-    M3 applicant fields.
-    """
+    """Verify that ``get_applicant`` returns all required applicant fields.
 
+    A known applicant is inserted into the database, retrieved through
+    :func:`src.orm_queries.get_applicant`, and checked for the expected
+    dictionary keys and representative field values.
+
+    :param db_connection: Connection to the application's PostgreSQL
+        database.
+    """
     applicant_data = {
         "p_id": 90000000,
         "program": "Computer Science",
@@ -275,15 +309,30 @@ def test_get_applicant_returns_expected_dict(db_connection):
 
     db_connection.commit()
 
+
 @pytest.mark.db
 def test_applicants_table_can_be_queried():
+    """Verify that the ``applicants`` table can be queried successfully.
+
+    The test executes a simple row-count query through the application's
+    SQLAlchemy session and verifies that the resulting count is non-negative.
+    """
     with Session() as session:
-        count = session.execute(text("SELECT COUNT(*) FROM applicants")).scalar()
+        count = session.execute(
+            text("SELECT COUNT(*) FROM applicants")
+        ).scalar()
 
     assert count >= 0
 
+
 @pytest.mark.db
 def test_transform_record_creates_database_record():
+    """Verify that a scraper record is transformed into database fields.
+
+    The test checks that the Grad Café result ID becomes ``p_id`` and that
+    the program, university, and URL are preserved in the transformed
+    database record.
+    """
     applicant = {
         "url": RESULT_URL + "/",
         "program_name": "Computer Science",
@@ -310,6 +359,7 @@ def test_transform_record_creates_database_record():
     assert record["url"] == applicant["url"]
 
 
+@pytest.mark.db
 @pytest.mark.parametrize(
     "url, expected",
     [
@@ -320,10 +370,27 @@ def test_transform_record_creates_database_record():
     ],
 )
 def test_get_p_id_handles_invalid_urls(url, expected):
+    """Verify extraction of numeric result IDs from supported URLs.
+
+    Valid Grad Café result URLs produce their numeric result ID. Empty,
+    missing, malformed, or non-numeric URLs return ``None``.
+
+    :param url: URL value passed to :func:`src.load_data._get_p_id`.
+    :param expected: Expected numeric ID or ``None`` for invalid input.
+    """
     assert _get_p_id(url) == expected
+
 
 @pytest.mark.db
 def test_get_applicant(monkeypatch):
+    """Verify that ``get_applicant`` maps an ORM object to a dictionary.
+
+    A fake SQLAlchemy session and applicant object are used to verify that
+    the function queries the expected model, returns every applicant field,
+    and closes the session afterward.
+
+    :param monkeypatch: Pytest fixture used to replace the session factory.
+    """
     class FakeApplicant:
         p_id = 123
         program = "Computer Science"
@@ -380,8 +447,16 @@ def test_get_applicant(monkeypatch):
 
     assert session.closed is True
 
+
 @pytest.mark.db
 def test_get_applicant_not_found(monkeypatch):
+    """Verify that ``get_applicant`` returns ``None`` for a missing applicant.
+
+    A fake session returns no ORM object for the requested ID. The test
+    verifies that the function returns ``None`` and still closes the session.
+
+    :param monkeypatch: Pytest fixture used to replace the session factory.
+    """
     class FakeSession:
         def __init__(self):
             self.closed = False
@@ -402,8 +477,17 @@ def test_get_applicant_not_found(monkeypatch):
     assert result is None
     assert session.closed is True
 
+
 @pytest.mark.db
 def test_clean_load_data(tmp_path):
+    """Verify that the cleaning loader accepts supported JSON structures.
+
+    A JSON list is loaded directly, a ``limit`` restricts the number of
+    records, and a dictionary containing a ``rows`` list is also accepted.
+    Invalid dictionary structures must raise ``ValueError``.
+
+    :param tmp_path: Temporary directory used for test JSON files.
+    """
     data = [{"id": 1}, {"id": 2}]
     path = tmp_path / "data.json"
 
@@ -420,24 +504,38 @@ def test_clean_load_data(tmp_path):
     with pytest.raises(ValueError, match="Input data must be a list"):
         clean.load_data(path)
 
+
 @pytest.mark.db
 def test_clean_canonical_helpers():
+    """Verify canonical comparison and lookup helper behavior.
+
+    The comparison key must normalize case and repeated whitespace, while
+    canonical lookup helpers must map known programs and universities to
+    their canonical values.
+    """
     assert clean._comparison_key("  Computer   Science  ") == (
         "computer science"
     )
     assert clean._comparison_key(None) == ""
 
-    lookup = clean._build_canonical_lookup(["Computer Science", "Data Science"])
+    lookup = clean._build_canonical_lookup(
+        ["Computer Science", "Data Science"]
+    )
 
     assert lookup == {
         "computer science": "Computer Science",
         "data science": "Data Science",
     }
 
-    assert clean._get_canonical_program("Computer Science") == "Computer Science"
-    assert clean._get_canonical_university("Johns Hopkins University") == "Johns Hopkins University"
+    assert clean._get_canonical_program(
+        "Computer Science"
+    ) == "Computer Science"
+    assert clean._get_canonical_university(
+        "Johns Hopkins University"
+    ) == "Johns Hopkins University"
 
 
+@pytest.mark.db
 @pytest.mark.parametrize(
     "program, university, expected",
     [
@@ -447,6 +545,17 @@ def test_clean_canonical_helpers():
     ],
 )
 def test_clean_already_cleaned(program, university, expected):
+    """Verify detection of records with both generated fields populated.
+
+    A record is considered already cleaned only when both the generated
+    program and generated university values are present.
+
+    :param program: Generated program value to place in the test record.
+    :param university: Generated university value to place in the test
+        record.
+    :param expected: Expected result from
+        :func:`src.clean._is_already_cleaned`.
+    """
     row = {
         "llm-generated-program": program,
         "llm-generated-university": university,
@@ -455,6 +564,7 @@ def test_clean_already_cleaned(program, university, expected):
     assert clean._is_already_cleaned(row) is expected
 
 
+@pytest.mark.db
 @pytest.mark.parametrize(
     "program_ok, university_ok, program, university, "
     "llm_program, llm_university, expected",
@@ -523,7 +633,26 @@ def test_clean_canon_check(
     llm_university,
     expected,
 ):
-    monkeypatch.setattr(clean, "_call_llm",
+    """Verify canonical and LLM-derived cleaning branches.
+
+    The test exercises the combinations where the program, university,
+    neither, or both values already match canonical values. It verifies
+    the standardized values and all cleaning statistics returned by
+    :func:`src.clean._canon_check`.
+
+    :param monkeypatch: Pytest fixture used to provide a deterministic
+        LLM response.
+    :param program_ok: Whether the input program has a canonical match.
+    :param university_ok: Whether the input university has a canonical match.
+    :param program: Existing program value.
+    :param university: Existing university value.
+    :param llm_program: Program value returned by the LLM.
+    :param llm_university: University value returned by the LLM.
+    :param expected: Expected standardized values and cleaning counters.
+    """
+    monkeypatch.setattr(
+        clean,
+        "_call_llm",
         lambda **kwargs: {
             "standardized_program": "Data Science",
             "standardized_university": "Test University",
@@ -542,8 +671,18 @@ def test_clean_canon_check(
 
     assert result == expected
 
+
 @pytest.mark.db
 def test_final_cleaning_stats(monkeypatch, capsys):
+    """Verify the formatting of the cleaning summary statistics.
+
+    The test fixes the current time so that elapsed time and processing
+    rate are deterministic, then verifies that all summary counters are
+    printed with their expected labels and formatting.
+
+    :param monkeypatch: Pytest fixture used to replace ``time.time``.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     monkeypatch.setattr("src.clean.time.time", lambda: 101.0)
 
     clean._final_cleaning_stats(
@@ -573,12 +712,20 @@ def test_final_cleaning_stats(monkeypatch, capsys):
     ]:
         assert text in output
 
+
 @pytest.mark.db
 def test_clean_data_empty():
+    """Verify that cleaning an empty record list returns an empty list."""
     assert clean.clean_data([]) == []
+
 
 @pytest.mark.db
 def test_clean_data_already_cleaned_record():
+    """Verify that an already-cleaned record is returned unchanged.
+
+    Records containing both generated program and university values should
+    bypass additional cleaning and remain identical to their input form.
+    """
     row = {
         "program_name": "Computer Science",
         "university": "Johns Hopkins University",
@@ -588,8 +735,14 @@ def test_clean_data_already_cleaned_record():
 
     assert clean.clean_data([row]) == [row]
 
+
 @pytest.mark.db
 def test_clean_data_canonical_record():
+    """Verify that canonical program and university values are populated.
+
+    A record whose original program and university already match canonical
+    values should receive those canonical values in the generated fields.
+    """
     row = {
         "program_name": "Computer Science",
         "university": "Johns Hopkins University",
@@ -601,8 +754,18 @@ def test_clean_data_canonical_record():
         "llm-generated-university": "Johns Hopkins University",
     }]
 
+
 @pytest.mark.db
 def test_save_cleaned_data(tmp_path, capsys):
+    """Verify that cleaned records are written to a JSON file.
+
+    The test confirms that the output file is created, contains the supplied
+    records, and that the save operation reports the number of records
+    written.
+
+    :param tmp_path: Temporary directory used for the output JSON file.
+    :param capsys: Pytest fixture used to capture standard output.
+    """
     path = tmp_path / "cleaned.json"
     data = [{"program_name": "Computer Science"}]
 
@@ -612,11 +775,24 @@ def test_save_cleaned_data(tmp_path, capsys):
     assert json.loads(path.read_text(encoding="utf-8")) == data
     assert f"Saved 1 records to {path}" in capsys.readouterr().out
 
+
 @pytest.mark.db
 def test_clean_main_block(monkeypatch):
+    """Verify that the cleaning module's main block can execute.
+
+    The cleaning, loading, and saving functions are replaced with no-op
+    implementations so the module's ``__main__`` entry point can be
+    executed without performing real file or LLM operations.
+
+    :param monkeypatch: Pytest fixture used to replace cleaning operations.
+    """
     monkeypatch.setattr(clean, "load_data", lambda path: [])
     monkeypatch.setattr(clean, "clean_data", lambda data: [])
-    monkeypatch.setattr(clean, "save_cleaned_data", lambda data, path: None)
+    monkeypatch.setattr(
+        clean,
+        "save_cleaned_data",
+        lambda data, path: None,
+    )
 
     path = "src/clean.py"
 
@@ -625,8 +801,16 @@ def test_clean_main_block(monkeypatch):
 
     exec(compile(source, path, "exec"), {"__name__": "__main__"})
 
+
 @pytest.mark.db
 def test_load_data_helpers_cover_invalid_values():
+    """Verify invalid-value handling and complete record transformation.
+
+    Invalid numeric values, dates, and result IDs must be converted to
+    ``None``. A valid applicant record must have its string fields trimmed,
+    numeric fields converted, date parsed, and LLM-generated field names
+    converted to the database naming convention.
+    """
     assert load_data._clean_float("not-a-number") is None
     assert load_data._parse_date("not-a-date") is None
     assert load_data._get_p_id("not-a-number") is None
@@ -665,8 +849,21 @@ def test_load_data_helpers_cover_invalid_values():
     assert record["llm_generated_program"] == "Computer Science"
     assert record["llm_generated_university"] == "Johns Hopkins University"
 
+
 @pytest.mark.db
 def test_load_data_main(monkeypatch, tmp_path, capsys):
+    """Verify the main database loading workflow.
+
+    The test supplies one valid and one invalid applicant record, replaces
+    the database connection with a fake connection, and verifies that the
+    loader creates the table, inserts only the valid record, commits the
+    transaction, and reports the expected processing statistics.
+
+    :param monkeypatch: Pytest fixture used to replace the input path and
+        PostgreSQL connection.
+    :param tmp_path: Temporary directory used for the input JSON file.
+    :param capsys: Pytest fixture used to capture loader output.
+    """
     data_file = tmp_path / "applicants.json"
 
     applicants = [
@@ -780,8 +977,15 @@ def test_load_data_main(monkeypatch, tmp_path, capsys):
     assert "Skipped:   1" in output
     assert "Database loading complete." in output
 
+
 @pytest.mark.db
 def test_load_data_transform_record_cleans_all_fields():
+    """Verify that ``_transform_record`` normalizes all applicant fields.
+
+    Leading and trailing whitespace is removed from string fields, numeric
+    values are converted to floats, dates are converted to ``date`` objects,
+    and hyphenated LLM-generated keys are mapped to database column names.
+    """
     applicant = {
         "url": "https://www.thegradcafe.com/result/54321/",
         "program_name": "  Computer Science  ",
@@ -820,31 +1024,35 @@ def test_load_data_transform_record_cleans_all_fields():
         "Johns Hopkins University"
     )
 
-@pytest.mark.db
-def test_load_data_invalid_float_and_id():
-    assert load_data._clean_float("invalid") is None
-    assert load_data._get_p_id("https://www.thegradcafe.com/result/abc") is None
 
 @pytest.mark.db
 def test_load_data_clean_float_invalid_values():
+    """Verify that ``_clean_float`` returns ``None`` for invalid inputs.
+
+    The helper must reject both non-numeric strings and arbitrary objects
+    that cannot be converted to a floating-point value.
+    """
     assert _clean_float("not-a-number") is None
     assert _clean_float(object()) is None
 
-@pytest.mark.db
-def test_load_data_invalid_float_and_id():
-    assert load_data._get_p_id(
-        "https://www.thegradcafe.com/result/abc"
-    ) is None
 
 @pytest.mark.db
 def test_load_data_invalid_float_and_id():
+    """Verify invalid numeric values and malformed result IDs return ``None``."""
     assert load_data._clean_float("invalid") is None
     assert load_data._get_p_id(
         "https://www.thegradcafe.com/result/abc"
     ) is None
 
+
 @pytest.mark.db
 def test_load_data_transform_record_invalid_numeric_values():
+    """Verify that invalid applicant numeric fields become ``None``.
+
+    A record with a valid result ID but invalid GPA and GRE values should
+    still be transformed successfully, with each invalid numeric field
+    represented as ``None``.
+    """
     applicant = {
         "url": "https://www.thegradcafe.com/result/54321",
         "gpa": "not-a-number",

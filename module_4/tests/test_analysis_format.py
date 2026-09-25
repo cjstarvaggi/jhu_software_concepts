@@ -7,6 +7,15 @@ from src import orm_queries
 
 @pytest.mark.analysis
 def test_analysis_page_contains_answer_labels():
+    """Verify that the analysis page renders answer labels.
+
+    The test creates the Flask application in testing mode, requests the
+    ``/analysis`` endpoint, and verifies that the response succeeds and
+    contains the ``Answer:`` label.
+
+    :raises AssertionError: If the analysis endpoint does not return HTTP
+        200 or the response does not contain an answer label.
+    """
     app = create_app({"TESTING": True})
 
     with app.test_client() as client:
@@ -18,6 +27,16 @@ def test_analysis_page_contains_answer_labels():
 
 @pytest.mark.analysis
 def test_percentages_have_two_decimal_places():
+    """Verify that percentages on the analysis page use two decimal places.
+
+    The test extracts percentage values from the rendered ``/analysis``
+    page and verifies that every percentage matches the format
+    ``N.NN%``.
+
+    :raises AssertionError: If the analysis endpoint fails, no percentage
+        values are rendered, or any percentage does not contain exactly
+        two decimal places.
+    """
     app = create_app({"TESTING": True})
 
     with app.test_client() as client:
@@ -31,7 +50,7 @@ def test_percentages_have_two_decimal_places():
     assert percentages
     assert all(re.fullmatch(r"\d+\.\d{2}%", value) for value in percentages)
 
-
+@pytest.mark.analysis
 @pytest.mark.parametrize(
     "question, expected",
     [
@@ -51,6 +70,21 @@ def test_percentages_have_two_decimal_places():
 
 @pytest.mark.analysis
 def test_orm_questions_print_branches(question, expected, capsys):
+    """Verify that each ORM analysis question prints its answer label.
+
+    Each parameterized case invokes one of the ORM question functions with
+    a fake database session. The test verifies that the function writes the
+    expected question label to standard output.
+
+    :param question: ORM question function being tested.
+    :type question: callable
+    :param expected: Expected question label printed by the function.
+    :type expected: str
+    :param capsys: Pytest fixture used to capture standard output.
+    :type capsys: _pytest.capture.CaptureFixture
+    :raises AssertionError: If the expected question label is not present
+        in the captured output.
+    """
     class FakeResult:
         def scalar_one(self):
             return 1
@@ -69,6 +103,18 @@ def test_orm_questions_print_branches(question, expected, capsys):
 
 @pytest.mark.analysis
 def test_orm_queries_main(monkeypatch):
+    """Verify that the ORM query entry point invokes the expected questions.
+
+    The test replaces the database session and selected question functions
+    with fakes, then verifies that :func:`src.orm_queries.main` invokes the
+    expected question functions in the required order.
+
+    :param monkeypatch: Pytest fixture used to replace the ORM session and
+        question functions during the test.
+    :type monkeypatch: _pytest.monkeypatch.MonkeyPatch
+    :raises AssertionError: If the expected ORM question functions are not
+        invoked or are invoked in the wrong order.
+    """
     calls = []
 
     class FakeSession:

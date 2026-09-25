@@ -8,13 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATA_FILE = os.getenv("APPLICANT_DATA_FILE")
-DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
-DB_PORT = os.getenv("POSTGRES_PORT", "5432")
-DB_NAME = os.getenv("POSTGRES_DB")
-DB_USER = os.getenv("POSTGRES_USER")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("POSTGRES_URL")
 
 
 CREATE_TABLE_SQL = """
@@ -253,13 +247,7 @@ def main(rollback=False):
     with open(DATA_FILE, "r", encoding="utf-8") as file:
         applicants = json.load(file)
 
-    connection_string = DATABASE_URL or (
-        f"host={DB_HOST} "
-        f"port={DB_PORT} "
-        f"dbname={DB_NAME} "
-        f"user={DB_USER} "
-        f"password={DB_PASSWORD}"
-    )
+    connection_string = DATABASE_URL 
 
     inserted = 0
     updated = 0
