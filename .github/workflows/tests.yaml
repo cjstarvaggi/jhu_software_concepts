@@ -28,6 +28,7 @@ jobs:
       - name: Run test suite
         env:
           PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src 
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           pytest -m "web or buttons or analysis or db or integration" --cov=module_4/src
 
