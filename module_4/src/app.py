@@ -1,3 +1,4 @@
+import os
 import json
 import threading
 
@@ -21,7 +22,7 @@ from orm_queries import (
 )
 from scrape import scrape_data, survey_url
 
-APPLICANT_DATA_FILE = r"src\llm_extend_applicant_data.json"
+APPLICANT_DATA_FILE = os.path.join("src", "llm_extend_applicant_data.json")
 
 pull_status = {
     "state": "idle",

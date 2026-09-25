@@ -8,7 +8,7 @@ from llm_hosting.app import (
     CANON_UNIS,
 )
 
-data_file_name = r"src\llm_extend_applicant_data.json"
+data_file_name = os.path.join("src", "llm_extend_applicant_data.json")
 
 
 def load_data(input_path, limit=None):

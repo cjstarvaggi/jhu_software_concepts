@@ -12,7 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 batch_size = 20
-data_file_name = r"src\llm_extend_applicant_data.json"
+data_file_name = os.path.join("src", "llm_extend_applicant_data.json")
 chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 chrome_profile = r"C:\temp\selenium-chrome"
 chrome_port = 9222
