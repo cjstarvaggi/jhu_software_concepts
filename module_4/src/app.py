@@ -114,7 +114,7 @@ def _run_pull():
             "Loading new applicant data into PostgreSQL..."
         )
 
-        load_sql_data()
+        load_sql_data(data_file=APPLICANT_DATA_FILE)
 
         pull_status["state"] = "complete"
         pull_status["message"] = "Data pull completed successfully."

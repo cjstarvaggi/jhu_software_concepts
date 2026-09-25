@@ -143,8 +143,6 @@ def clean_data_file(tmp_path, monkeypatch):
     data_file = src_dir / "llm_extend_applicant_data.json"
     data_file.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setenv("DATA_FILE", str(data_file))
-
     return data_file
 
 
