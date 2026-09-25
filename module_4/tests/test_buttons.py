@@ -1,5 +1,6 @@
 import pytest
 import json
+import os
 
 from src import app as app_module, scrape, load_data
 from src.app import create_app
@@ -1384,3 +1385,56 @@ def test_main_rolls_back_on_exception(monkeypatch, tmp_path):
         load_data.main()
 
     assert connection.rollback_called
+
+@pytest.mark.buttons
+def test_run_pull_restores_missing_data_file(monkeypatch, tmp_path):
+    """
+    Verify that DATA_FILE is removed when it was not set before the pull.
+
+    The test replaces the scraper, cleaning functions, and SQL loader with
+    test doubles, then runs the pull pipeline with DATA_FILE initially absent.
+    After the pull completes, DATA_FILE should be removed from the environment
+    rather than leaving the temporary applicant data path behind.
+
+    :param monkeypatch: Pytest fixture used to replace application
+        dependencies and modify environment variables.
+    :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    """
+    data_file = tmp_path / "llm_extend_applicant_data.json"
+
+    monkeypatch.delenv("DATA_FILE", raising=False)
+
+    monkeypatch.setattr(
+        app_module,
+        "APPLICANT_DATA_FILE",
+        str(data_file),
+    )
+
+    monkeypatch.setattr(
+        app_module,
+        "scrape_data",
+        lambda *args, **kwargs: None,
+    )
+
+    monkeypatch.setattr(
+        app_module,
+        "load_clean_data",
+        lambda *args, **kwargs: [{"url": "test"}],
+    )
+
+    monkeypatch.setattr(
+        app_module,
+        "clean_data",
+        lambda data: data,
+    )
+
+    monkeypatch.setattr(
+        app_module,
+        "load_sql_data",
+        lambda: None,
+    )
+
+    app_module._run_pull()
+
+    assert "DATA_FILE" not in os.environ
+    assert app_module.pull_status["state"] == "complete"
