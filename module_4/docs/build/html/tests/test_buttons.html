@@ -68,6 +68,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_resume_pull_when_authenticating"><code class="docutils literal notranslate"><span class="pre">test_resume_pull_when_authenticating()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_run_pull_completes_successfully"><code class="docutils literal notranslate"><span class="pre">test_run_pull_completes_successfully()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_run_pull_handles_error"><code class="docutils literal notranslate"><span class="pre">test_run_pull_handles_error()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_run_pull_restores_missing_data_file"><code class="docutils literal notranslate"><span class="pre">test_run_pull_restores_missing_data_file()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_scrape_commandeer_chrome"><code class="docutils literal notranslate"><span class="pre">test_scrape_commandeer_chrome()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_scrape_data_moves_to_next_page"><code class="docutils literal notranslate"><span class="pre">test_scrape_data_moves_to_next_page()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#tests.test_buttons.test_scrape_data_processes_new_results"><code class="docutils literal notranslate"><span class="pre">test_scrape_data_processes_new_results()</span></code></a></li>
@@ -328,6 +329,25 @@ exception message.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>monkeypatch</strong> – Pytest fixture used to replace the scraper.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tests.test_buttons.test_run_pull_restores_missing_data_file">
+<span class="sig-prename descclassname"><span class="pre">tests.test_buttons.</span></span><span class="sig-name descname"><span class="pre">test_run_pull_restores_missing_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">monkeypatch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmp_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#tests.test_buttons.test_run_pull_restores_missing_data_file" title="Link to this definition"></a></dt>
+<dd><p>Verify that DATA_FILE is removed when it was not set before the pull.</p>
+<p>The test replaces the scraper, cleaning functions, and SQL loader with
+test doubles, then runs the pull pipeline with DATA_FILE initially absent.
+After the pull completes, DATA_FILE should be removed from the environment
+rather than leaving the temporary applicant data path behind.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>monkeypatch</strong> – Pytest fixture used to replace application
+dependencies and modify environment variables.</p></li>
+<li><p><strong>tmp_path</strong> – Pytest fixture providing a temporary filesystem path.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

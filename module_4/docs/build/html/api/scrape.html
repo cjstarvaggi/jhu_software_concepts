@@ -90,7 +90,7 @@
 <span id="scrape-data"></span><h1>Scrape Data<a class="headerlink" href="#module-src.scrape" title="Link to this heading"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="src.scrape.save_data">
-<span class="sig-prename descclassname"><span class="pre">src.scrape.</span></span><span class="sig-name descname"><span class="pre">save_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.scrape.save_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">src.scrape.</span></span><span class="sig-name descname"><span class="pre">save_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.scrape.save_data" title="Link to this definition"></a></dt>
 <dd><p>Safely persist applicant data to the configured JSON file.</p>
 <p>The data is first written to a temporary file and then moved into
 place with <code class="docutils literal notranslate"><span class="pre">os.replace</span></code> so that a failure during the write is less
@@ -104,7 +104,7 @@ likely to destroy the previous checkpoint.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="src.scrape.scrape_data">
-<span class="sig-prename descclassname"><span class="pre">src.scrape.</span></span><span class="sig-name descname"><span class="pre">scrape_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">survey_url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">authentication_event</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.scrape.scrape_data" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">src.scrape.</span></span><span class="sig-name descname"><span class="pre">scrape_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">survey_url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">authentication_event</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.scrape.scrape_data" title="Link to this definition"></a></dt>
 <dd><p>Incrementally scrape Grad Cafe applicant data and persist checkpoints.</p>
 <p>Previously stored applicant records are loaded first. The highest
 existing result ID is used to determine where previously scraped data
