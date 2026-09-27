@@ -11,11 +11,26 @@ Due Date: 09/27/2026
 2. Install the required Python packages: pip install -r requirements.txt
 3. Navigate to https://jhu-software-concepts-m4-cs.readthedocs.io/en/latest/
 4. From the project root, cd to the src folder; create a .env file containing 
-the PostgreSQL database connection information using the info in the Overview
-& Setup section on the readthedocs site above.
+the PostgreSQL database connection information in the #ENVIRONMENT section below.
 5. From the project root, cd to the src folder; then run python -m app
 6. Run the full test suite from the project root using the command:
 pytest -m "web or buttons or analysis or db or integration" --cov=src
+
+# ENVIONRMENT
+
+In order to run the code, you must create a .env file in the src folder containing
+the following variables:
+
+```
+POSTGRES_HOST={host_name}
+POSTGRES_PORT={PostgreSQL_port_number}
+POSTGRES_DB={database_name}
+POSTGRES_USER={PostgreSQL_username}
+POSTGRES_PASSWORD={PostgreSQL_password}
+DATABASE_URL=postgresql://{PostgreSQL_username}:{PostgreSQL_password}@{host_name}:{PostgreSQL_port_number}/{database_name}
+
+DATA_FILE=src/llm_extend_applicant_data.json
+```
 
 # APPROACH
 
