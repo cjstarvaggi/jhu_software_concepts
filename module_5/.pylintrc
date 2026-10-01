@@ -1,0 +1,3 @@
+[MASTER]
+
+init-hook='import os, sys; cwd = os.getcwd(); parent = os.path.dirname(cwd); sys.path.insert(0, cwd); sys.path.insert(0, os.path.join(cwd, "src")); sys.path.insert(0, parent); sys.path.insert(0, os.path.join(parent, "src"))'

@@ -1,0 +1,189 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture &mdash; Module 4 1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=29a6c3e3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api_reference.html" />
+    <link rel="prev" title="Overview &amp; Setup" href="overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Module 4
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#web-layer">Web Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#etl-layer">ETL Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#database-layer">Database Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#layer-interaction">Layer Interaction</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes.html">Operational Notes</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Module 4</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h1>
+<p>The application is organized into three primary layers: the web layer,
+the ETL layer, and the database layer.</p>
+<section id="web-layer">
+<h2>Web Layer<a class="headerlink" href="#web-layer" title="Link to this heading"></a></h2>
+<p>The web layer is implemented using Flask and is responsible for providing
+the application’s HTTP interface.</p>
+<p>The primary responsibilities of this layer include:</p>
+<ul class="simple">
+<li><p>Creating and configuring the Flask application.</p></li>
+<li><p>Registering application routes.</p></li>
+<li><p>Receiving requests from the user.</p></li>
+<li><p>Returning HTML pages and API responses.</p></li>
+<li><p>Initiating data-processing operations through the application’s
+underlying modules.</p></li>
+</ul>
+<p>The primary web application functionality is located in
+<a class="reference internal" href="api/app.html#module-src.app" title="src.app"><code class="xref py py-mod docutils literal notranslate"><span class="pre">src.app</span></code></a>.</p>
+</section>
+<section id="etl-layer">
+<h2>ETL Layer<a class="headerlink" href="#etl-layer" title="Link to this heading"></a></h2>
+<p>The ETL layer is responsible for extracting applicant information,
+transforming and cleaning the collected data, and preparing records for
+storage.</p>
+<p>The primary responsibilities include:</p>
+<ul class="simple">
+<li><p>Scraping applicant information from source pages.</p></li>
+<li><p>Loading collected data.</p></li>
+<li><p>Cleaning and standardizing applicant records.</p></li>
+<li><p>Normalizing program and university information.</p></li>
+<li><p>Preparing records for database insertion.</p></li>
+</ul>
+<p>The primary ETL functionality is distributed across
+<a class="reference internal" href="api/scrape.html#module-src.scrape" title="src.scrape"><code class="xref py py-mod docutils literal notranslate"><span class="pre">src.scrape</span></code></a>, <a class="reference internal" href="api/load_data.html#module-src.load_data" title="src.load_data"><code class="xref py py-mod docutils literal notranslate"><span class="pre">src.load_data</span></code></a>, and <a class="reference internal" href="api/clean.html#module-src.clean" title="src.clean"><code class="xref py py-mod docutils literal notranslate"><span class="pre">src.clean</span></code></a>.</p>
+</section>
+<section id="database-layer">
+<h2>Database Layer<a class="headerlink" href="#database-layer" title="Link to this heading"></a></h2>
+<p>The database layer provides the persistent storage and database-access
+functionality for applicant records.</p>
+<p>The primary responsibilities include:</p>
+<ul class="simple">
+<li><p>Defining the database schema through SQLAlchemy ORM models.</p></li>
+<li><p>Representing applicant records with the <code class="docutils literal notranslate"><span class="pre">Applicant</span></code> model.</p></li>
+<li><p>Creating and managing database sessions.</p></li>
+<li><p>Inserting and querying applicant records.</p></li>
+<li><p>Retrieving applicant information for use by the application.</p></li>
+</ul>
+<p>The ORM model is defined in <a class="reference internal" href="api/models.html#module-src.models" title="src.models"><code class="xref py py-mod docutils literal notranslate"><span class="pre">src.models</span></code></a>, while database queries and
+related operations are implemented in <a class="reference internal" href="api/orm_queries.html#module-src.orm_queries" title="src.orm_queries"><code class="xref py py-mod docutils literal notranslate"><span class="pre">src.orm_queries</span></code></a>.</p>
+</section>
+<section id="layer-interaction">
+<h2>Layer Interaction<a class="headerlink" href="#layer-interaction" title="Link to this heading"></a></h2>
+<p>The three layers work together as follows:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Web Layer
+src.app
+    |
+    v
+ETL Layer
+src.scrape -&gt; src.load_data -&gt; src.clean
+    |
+    v
+Database Layer
+src.models / src.orm_queries
+    |
+    v
+PostgreSQL Database
+</pre></div>
+</div>
+<p>The web layer provides the user-facing interface, the ETL layer processes
+applicant data, and the database layer provides persistent storage and
+retrieval.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="overview.html" class="btn btn-neutral float-left" title="Overview &amp; Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api_reference.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Carl Starvaggi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
