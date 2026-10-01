@@ -1,17 +1,15 @@
 import json
-import pytest
-import psycopg
+from datetime import date
 
+import psycopg
+import pytest
 from sqlalchemy import text
 
-from datetime import date
-from src.models import Session
-from src.load_data import _get_p_id, _transform_record, _clean_float
 from src import clean, load_data
-from src.models import Session
+from src.load_data import _clean_float, _get_p_id, _transform_record
+from src.models import SESSION_FACTORY, Applicant
 import src.orm_queries as orm_queries
 from src.orm_queries import _question_2
-
 
 BASE_URL = "https://www.thegradcafe.com"
 RESULT_URL = f"{BASE_URL}/result/12345"
@@ -34,6 +32,99 @@ REQUIRED_FIELDS = [
     "llm_generated_program",
     "llm_generated_university",
 ]
+
+SELECT_APPLICANTS_SQL = """
+SELECT
+    p_id,
+    program,
+    university,
+    comments,
+    date_added,
+    url,
+    status,
+    term,
+    us_or_international,
+    gpa,
+    gre,
+    gre_v,
+    gre_aw,
+    degree,
+    llm_generated_program,
+    llm_generated_university
+FROM applicants
+"""
+
+RESTORE_APPLICANTS_SQL = """
+INSERT INTO applicants (
+    p_id,
+    program,
+    university,
+    comments,
+    date_added,
+    url,
+    status,
+    term,
+    us_or_international,
+    gpa,
+    gre,
+    gre_v,
+    gre_aw,
+    degree,
+    llm_generated_program,
+    llm_generated_university
+)
+VALUES (
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s
+)
+"""
+
+APPLICANT_COLUMNS = (
+    "p_id",
+    "program",
+    "university",
+    "comments",
+    "date_added",
+    "url",
+    "status",
+    "term",
+    "us_or_international",
+    "gpa",
+    "gre",
+    "gre_v",
+    "gre_aw",
+    "degree",
+    "llm_generated_program",
+    "llm_generated_university",
+)
+
+
+def _restore_applicants(cursor, rows):
+    """
+    Restore applicant rows using a fixed SQL statement.
+
+    The statement contains a fixed set of trusted column names and uses
+    positional parameters for all database values.
+
+    :param cursor: Active PostgreSQL cursor.
+    :param rows: Applicant rows previously retrieved from the database.
+    :type rows: list[tuple]
+    """
+    cursor.executemany(RESTORE_APPLICANTS_SQL, rows)
 
 
 @pytest.fixture
@@ -72,10 +163,9 @@ def test_insert_on_pull(db_connection, monkeypatch, tmp_path):
     :param tmp_path: Temporary directory used for the applicant JSON file.
     """
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM applicants;")
+        cursor.execute(SELECT_APPLICANTS_SQL)
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        cursor.execute("TRUNCATE TABLE applicants;")
+        cursor.execute("TRUNCATE TABLE applicants")
     db_connection.commit()
 
     applicant_data = [
@@ -104,13 +194,13 @@ def test_insert_on_pull(db_connection, monkeypatch, tmp_path):
     monkeypatch.setattr(load_data, "DATA_FILE", str(data_file))
 
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT COUNT(*) FROM applicants;")
+        cursor.execute("SELECT COUNT(*) FROM applicants")
         assert cursor.fetchone()[0] == 0
 
     load_data.main()
 
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT COUNT(*) FROM applicants;")
+        cursor.execute("SELECT COUNT(*) FROM applicants")
         assert cursor.fetchone()[0] == 1
 
         cursor.execute(
@@ -133,8 +223,10 @@ def test_insert_on_pull(db_connection, monkeypatch, tmp_path):
                 llm_generated_program,
                 llm_generated_university
             FROM applicants
-            WHERE p_id = 123456;
-            """
+            WHERE p_id = %s
+            LIMIT 1
+            """,
+            (123456,),
         )
 
         row = cursor.fetchone()
@@ -143,14 +235,9 @@ def test_insert_on_pull(db_connection, monkeypatch, tmp_path):
     assert all(value is not None for value in row)
 
     with db_connection.cursor() as cursor:
-        cursor.execute("TRUNCATE TABLE applicants;")
-        column_names = ", ".join(columns)
-        placeholders = ", ".join(["%s"] * len(columns))
+        cursor.execute("TRUNCATE TABLE applicants")
+        _restore_applicants(cursor, rows)
 
-        cursor.executemany(
-            f"INSERT INTO applicants ({column_names}) VALUES ({placeholders})",
-            rows
-        )
     db_connection.commit()
 
 
@@ -160,7 +247,7 @@ def test_duplicate_pull_does_not_create_duplicates(
 ):
     """Verify that loading the same applicant twice does not duplicate it.
 
-    The applicant data is loaded twice using the same ``p_id``.  The test
+    The applicant data is loaded twice using the same ``p_id``. The test
     verifies that only one database row exists for that applicant after
     both loads.
 
@@ -170,10 +257,9 @@ def test_duplicate_pull_does_not_create_duplicates(
     :param tmp_path: Temporary directory used for the applicant JSON file.
     """
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM applicants;")
+        cursor.execute(SELECT_APPLICANTS_SQL)
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        cursor.execute("TRUNCATE TABLE applicants;")
+        cursor.execute("TRUNCATE TABLE applicants")
     db_connection.commit()
 
     applicant_data = [
@@ -204,17 +290,18 @@ def test_duplicate_pull_does_not_create_duplicates(
     load_data.main()
 
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT COUNT(*) FROM applicants;")
+        cursor.execute("SELECT COUNT(*) FROM applicants")
         first_count = cursor.fetchone()[0]
 
     load_data.main()
 
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT COUNT(*) FROM applicants;")
+        cursor.execute("SELECT COUNT(*) FROM applicants")
         second_count = cursor.fetchone()[0]
 
         cursor.execute(
-            "SELECT COUNT(*) FROM applicants WHERE p_id = 123456;"
+            "SELECT COUNT(*) FROM applicants WHERE p_id = %s",
+            (123456,),
         )
         matching_p_id_count = cursor.fetchone()[0]
 
@@ -223,14 +310,9 @@ def test_duplicate_pull_does_not_create_duplicates(
     assert matching_p_id_count == 1
 
     with db_connection.cursor() as cursor:
-        cursor.execute("TRUNCATE TABLE applicants;")
-        column_names = ", ".join(columns)
-        placeholders = ", ".join(["%s"] * len(columns))
+        cursor.execute("TRUNCATE TABLE applicants")
+        _restore_applicants(cursor, rows)
 
-        cursor.executemany(
-            f"INSERT INTO applicants ({column_names}) VALUES ({placeholders})",
-            rows
-        )
     db_connection.commit()
 
 
@@ -266,7 +348,9 @@ def test_get_applicant_returns_expected_dict(db_connection):
 
     with db_connection.cursor() as cursor:
         cursor.execute(load_data.CREATE_TABLE_SQL)
-        cursor.execute(load_data.INSERT_SQL, applicant_data)
+        insert_statement = load_data.INSERT_SQL
+        insert_params = load_data._insert_params(applicant_data)
+        cursor.execute(insert_statement, insert_params)
 
     db_connection.commit()
 
@@ -287,6 +371,7 @@ def test_get_applicant_returns_expected_dict(db_connection):
         "gpa",
         "gre",
         "gre_v",
+        "gre_v",
         "gre_aw",
         "degree",
         "llm_generated_program",
@@ -304,7 +389,7 @@ def test_get_applicant_returns_expected_dict(db_connection):
     with db_connection.cursor() as cursor:
         cursor.execute(
             "DELETE FROM applicants WHERE p_id = %s",
-            (90000000,)
+            (90000000,),
         )
 
     db_connection.commit()
@@ -317,10 +402,8 @@ def test_applicants_table_can_be_queried():
     The test executes a simple row-count query through the application's
     SQLAlchemy session and verifies that the resulting count is non-negative.
     """
-    with Session() as session:
-        count = session.execute(
-            text("SELECT COUNT(*) FROM applicants")
-        ).scalar()
+    with SESSION_FACTORY() as session:
+        count = session.execute(text("SELECT COUNT(*) FROM applicants")).scalar()
 
     assert count >= 0
 
@@ -391,6 +474,7 @@ def test_get_applicant(monkeypatch):
 
     :param monkeypatch: Pytest fixture used to replace the session factory.
     """
+
     class FakeApplicant:
         p_id = 123
         program = "Computer Science"
@@ -409,20 +493,23 @@ def test_get_applicant(monkeypatch):
         llm_generated_program = "Computer Science"
         llm_generated_university = "Johns Hopkins University"
 
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return FakeApplicant()
+
     class FakeSession:
         def __init__(self):
             self.closed = False
 
-        def get(self, model, p_id):
-            assert model is orm_queries.Applicant
-            assert p_id == 123
-            return FakeApplicant()
+        def execute(self, statement):
+            assert statement is not None
+            return FakeResult()
 
         def close(self):
             self.closed = True
 
     session = FakeSession()
-    monkeypatch.setattr(orm_queries, "Session", lambda: session)
+    monkeypatch.setattr(orm_queries, "SESSION_FACTORY", lambda: session)
 
     result = orm_queries.get_applicant(123)
 
@@ -457,20 +544,24 @@ def test_get_applicant_not_found(monkeypatch):
 
     :param monkeypatch: Pytest fixture used to replace the session factory.
     """
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return None
+
     class FakeSession:
         def __init__(self):
             self.closed = False
 
-        def get(self, model, p_id):
-            assert model is orm_queries.Applicant
-            assert p_id == 999
-            return None
+        def execute(self, statement):
+            assert statement is not None
+            return FakeResult()
 
         def close(self):
             self.closed = True
 
     session = FakeSession()
-    monkeypatch.setattr(orm_queries, "Session", lambda: session)
+    monkeypatch.setattr(orm_queries, "SESSION_FACTORY", lambda: session)
 
     result = orm_queries.get_applicant(999)
 
@@ -513,26 +604,21 @@ def test_clean_canonical_helpers():
     canonical lookup helpers must map known programs and universities to
     their canonical values.
     """
-    assert clean._comparison_key("  Computer   Science  ") == (
-        "computer science"
-    )
+    assert clean._comparison_key("  Computer   Science  ") == ("computer science")
     assert clean._comparison_key(None) == ""
 
-    lookup = clean._build_canonical_lookup(
-        ["Computer Science", "Data Science"]
-    )
+    lookup = clean._build_canonical_lookup(["Computer Science", "Data Science"])
 
     assert lookup == {
         "computer science": "Computer Science",
         "data science": "Data Science",
     }
 
-    assert clean._get_canonical_program(
-        "Computer Science"
-    ) == "Computer Science"
-    assert clean._get_canonical_university(
-        "Johns Hopkins University"
-    ) == "Johns Hopkins University"
+    assert clean._get_canonical_program("Computer Science") == "Computer Science"
+    assert (
+        clean._get_canonical_university("Johns Hopkins University")
+        == "Johns Hopkins University"
+    )
 
 
 @pytest.mark.db
@@ -566,12 +652,9 @@ def test_clean_already_cleaned(program, university, expected):
 
 @pytest.mark.db
 @pytest.mark.parametrize(
-    "program_ok, university_ok, program, university, "
-    "llm_program, llm_university, expected",
+    "program, university, llm_program, llm_university, expected",
     [
         (
-            True,
-            True,
             "Computer Science",
             "Johns Hopkins University",
             "Computer Science",
@@ -579,54 +662,62 @@ def test_clean_already_cleaned(program, university, expected):
             (
                 "Computer Science",
                 "Johns Hopkins University",
-                0, 1, 1, 1, 1,
+                1,
+                1,
+                1,
+                0,
+                1,
             ),
         ),
         (
-            False,
-            False,
             None,
             None,
             "data science",
             "test university",
             (
-                "Data Science",
-                "Test University",
-                1, 0, 0, 0, 0,
+                "data science",
+                "test university",
+                0,
+                0,
+                0,
+                1,
+                0,
             ),
         ),
         (
-            True,
-            False,
             "Computer Science",
             None,
             "Computer Science",
-            "unknown university",
+            "test university",
             (
                 "Computer Science",
-                "Test University",
-                1, 0, 1, 0, 0,
+                "test university",
+                1,
+                0,
+                0,
+                1,
+                0,
             ),
         ),
         (
-            False,
-            True,
             None,
             "Johns Hopkins University",
-            "unknown program",
+            "data science",
             "Johns Hopkins University",
             (
-                "Data Science",
+                "data science",
                 "Johns Hopkins University",
-                1, 0, 0, 1, 0,
+                0,
+                1,
+                0,
+                1,
+                0,
             ),
         ),
     ],
 )
-def test_clean_canon_check(
+def test_clean_standardize_record(
     monkeypatch,
-    program_ok,
-    university_ok,
     program,
     university,
     llm_program,
@@ -635,41 +726,55 @@ def test_clean_canon_check(
 ):
     """Verify canonical and LLM-derived cleaning branches.
 
-    The test exercises the combinations where the program, university,
-    neither, or both values already match canonical values. It verifies
-    the standardized values and all cleaning statistics returned by
-    :func:`src.clean._canon_check`.
+    The test exercises combinations where the program and university are
+    both canonical, neither is canonical, or only one is canonical. It
+    verifies the standardized values and the cleaning statistics recorded
+    by :class:`src.clean.CleaningStats`.
 
     :param monkeypatch: Pytest fixture used to provide a deterministic
         LLM response.
-    :param program_ok: Whether the input program has a canonical match.
-    :param university_ok: Whether the input university has a canonical match.
-    :param program: Existing program value.
-    :param university: Existing university value.
-    :param llm_program: Program value returned by the LLM.
-    :param llm_university: University value returned by the LLM.
+    :param program: Program value in the input record.
+    :param university: University value in the input record.
+    :param llm_program: Program value returned by the mocked LLM.
+    :param llm_university: University value returned by the mocked LLM.
     :param expected: Expected standardized values and cleaning counters.
     """
+    (
+        expected_program,
+        expected_university,
+        expected_program_matches,
+        expected_university_matches,
+        expected_both_matches,
+        expected_llm_calls,
+        expected_skipped_llm,
+    ) = expected
+
     monkeypatch.setattr(
         clean,
         "_call_llm",
         lambda **kwargs: {
-            "standardized_program": "Data Science",
-            "standardized_university": "Test University",
+            "standardized_program": llm_program,
+            "standardized_university": llm_university,
         },
     )
 
-    result = clean._canon_check(
-        program_ok,
-        university_ok,
-        program,
-        university,
-        llm_program,
-        llm_university,
-        0, 0, 0, 0, 0,
-    )
+    row = {
+        "program_name": program,
+        "university": university,
+    }
 
-    assert result == expected
+    stats = clean.CleaningStats()
+
+    result = clean._standardize_record(row, stats)
+
+    assert result["llm-generated-program"] == expected_program
+    assert result["llm-generated-university"] == expected_university
+
+    assert stats.program_matches == expected_program_matches
+    assert stats.university_matches == expected_university_matches
+    assert stats.both_matches == expected_both_matches
+    assert stats.llm_calls == expected_llm_calls
+    assert stats.skipped_llm == expected_skipped_llm
 
 
 @pytest.mark.db
@@ -685,9 +790,7 @@ def test_final_cleaning_stats(monkeypatch, capsys):
     """
     monkeypatch.setattr("src.clean.time.time", lambda: 101.0)
 
-    clean._final_cleaning_stats(
-        start_time=100.0,
-        total=10,
+    stats = clean.CleaningStats(
         program_matches=6,
         university_matches=7,
         both_matches=5,
@@ -696,21 +799,24 @@ def test_final_cleaning_stats(monkeypatch, capsys):
         already_cleaned=1,
     )
 
+    clean._final_cleaning_stats(
+        start_time=100.0,
+        total=10,
+        stats=stats,
+    )
+
     output = capsys.readouterr().out
 
-    for text in [
-        "Cleaning summary",
-        "Total records:                10",
-        "Program canonical matches:    6",
-        "University canonical matches: 7",
-        "Both canonical:                5",
-        "LLM calls:                     3",
-        "Skipped LLM calls:             2",
-        "Already cleaned:               1",
-        "Elapsed time:                  1.0s",
-        "Average rate:                  10.00 records/sec",
-    ]:
-        assert text in output
+    assert "Cleaning summary" in output
+    assert "Total records:                10" in output
+    assert "Program canonical matches:    6" in output
+    assert "University canonical matches: 7" in output
+    assert "Both canonical:                5" in output
+    assert "LLM calls:                     3" in output
+    assert "Skipped LLM calls:             2" in output
+    assert "Already cleaned:               1" in output
+    assert "Elapsed time:                  1.0s" in output
+    assert "Average rate:                  10.00 records/sec" in output
 
 
 @pytest.mark.db
@@ -748,11 +854,13 @@ def test_clean_data_canonical_record():
         "university": "Johns Hopkins University",
     }
 
-    assert clean.clean_data([row]) == [{
-        **row,
-        "llm-generated-program": "Computer Science",
-        "llm-generated-university": "Johns Hopkins University",
-    }]
+    assert clean.clean_data([row]) == [
+        {
+            **row,
+            "llm-generated-program": "Computer Science",
+            "llm-generated-university": "Johns Hopkins University",
+        }
+    ]
 
 
 @pytest.mark.db
@@ -815,23 +923,25 @@ def test_load_data_helpers_cover_invalid_values():
     assert load_data._parse_date("not-a-date") is None
     assert load_data._get_p_id("not-a-number") is None
 
-    record = load_data._transform_record({
-        "url": "https://www.thegradcafe.com/result/54321/",
-        "program_name": "  Computer Science  ",
-        "university": "  Johns Hopkins University  ",
-        "comments": "  Test comment  ",
-        "date_added": "09/23/2026",
-        "applicant_status": "  Accepted  ",
-        "start_term": "  Fall 2026  ",
-        "nationality": "  US  ",
-        "gpa": "3.85",
-        "gre_score": "320",
-        "gre_v_score": "160",
-        "gre_aw": "4.5",
-        "degree_type": "  PhD  ",
-        "llm-generated-program": "  Computer Science  ",
-        "llm-generated-university": "  Johns Hopkins University  ",
-    })
+    record = load_data._transform_record(
+        {
+            "url": "https://www.thegradcafe.com/result/54321/",
+            "program_name": "  Computer Science  ",
+            "university": "  Johns Hopkins University  ",
+            "comments": "  Test comment  ",
+            "date_added": "09/23/2026",
+            "applicant_status": "  Accepted  ",
+            "start_term": "  Fall 2026  ",
+            "nationality": "  US  ",
+            "gpa": "3.85",
+            "gre_score": "320",
+            "gre_v_score": "160",
+            "gre_aw": "4.5",
+            "degree_type": "  PhD  ",
+            "llm-generated-program": "  Computer Science  ",
+            "llm-generated-university": "  Johns Hopkins University  ",
+        }
+    )
 
     assert record["p_id"] == 54321
     assert record["program"] == "Computer Science"
@@ -911,6 +1021,7 @@ def test_load_data_main(monkeypatch, tmp_path, capsys):
     class FakeCursor:
         def __init__(self):
             self.fetchone_calls = 0
+            self.rowcount = -1
 
         def __enter__(self):
             return self
@@ -918,8 +1029,13 @@ def test_load_data_main(monkeypatch, tmp_path, capsys):
         def __exit__(self, exc_type, exc_value, traceback):
             return False
 
-        def execute(self, sql, record=None):
-            executed.append((sql, record))
+        def execute(self, statement, params=None):
+            executed.append((statement, params))
+
+            if statement == load_data.INSERT_SQL:
+                self.rowcount = 1
+            else:
+                self.rowcount = -1
 
         def fetchone(self):
             self.fetchone_calls += 1
@@ -957,14 +1073,14 @@ def test_load_data_main(monkeypatch, tmp_path, capsys):
     assert committed is True
     assert executed[0][0] == load_data.CREATE_TABLE_SQL
 
-    insert_calls = [
-        call
-        for call in executed
-        if call[0] == load_data.INSERT_SQL
-    ]
+    insert_calls = [call for call in executed if call[0] == load_data.INSERT_SQL]
 
     assert len(insert_calls) == 1
-    assert insert_calls[0][1]["p_id"] == 12345
+
+    expected_record = load_data._transform_record(applicants[0])
+    expected_params = load_data._insert_params(expected_record)
+
+    assert insert_calls[0][1] == expected_params
 
     output = capsys.readouterr().out
 
@@ -1020,9 +1136,7 @@ def test_load_data_transform_record_cleans_all_fields():
     assert result["gre_aw"] == 4.5
     assert result["degree"] == "PhD"
     assert result["llm_generated_program"] == "Computer Science"
-    assert result["llm_generated_university"] == (
-        "Johns Hopkins University"
-    )
+    assert result["llm_generated_university"] == ("Johns Hopkins University")
 
 
 @pytest.mark.db
@@ -1040,9 +1154,7 @@ def test_load_data_clean_float_invalid_values():
 def test_load_data_invalid_float_and_id():
     """Verify invalid numeric values and malformed result IDs return ``None``."""
     assert load_data._clean_float("invalid") is None
-    assert load_data._get_p_id(
-        "https://www.thegradcafe.com/result/abc"
-    ) is None
+    assert load_data._get_p_id("https://www.thegradcafe.com/result/abc") is None
 
 
 @pytest.mark.db
@@ -1083,10 +1195,8 @@ def test_question_2_no_nationality_classifications():
     :raises AssertionError: If the function does not return the expected
         ``N/A`` result.
     """
-    with Session() as session:
-        rows = session.execute(
-            text("SELECT * FROM applicants")
-        ).mappings().all()
+    with SESSION_FACTORY() as session:
+        rows = session.execute(text(SELECT_APPLICANTS_SQL)).mappings().all()
 
         try:
             session.execute(text("TRUNCATE TABLE applicants"))
@@ -1095,16 +1205,14 @@ def test_question_2_no_nationality_classifications():
             result = _question_2(session, print_string=False)
 
             assert result == (
-                "Percent international: N/A "
-                "(no nationality classifications)"
+                "Percent international: N/A " "(no nationality classifications)"
             )
         finally:
             session.rollback()
 
             for row in rows:
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO applicants (
                             p_id,
                             program,
@@ -1141,9 +1249,68 @@ def test_question_2_no_nationality_classifications():
                             :llm_generated_program,
                             :llm_generated_university
                         )
-                        """
-                    ),
+                        """),
                     dict(row),
                 )
 
             session.commit()
+
+
+@pytest.mark.db
+def test_applicant_str():
+    """Verify the readable string representation of an applicant.
+
+    The string should contain the applicant's primary key and university.
+    """
+    applicant = Applicant(
+        p_id=123,
+        university="Johns Hopkins University",
+    )
+
+    assert str(applicant) == ("Applicant 123: Johns Hopkins University")
+
+
+@pytest.mark.db
+def test_applicant_to_dict():
+    """Verify that an applicant converts to a dictionary correctly.
+
+    The resulting dictionary should contain all database fields exposed by
+    the model with their current values.
+    """
+    applicant = Applicant(
+        p_id=123,
+        program="Computer Science",
+        university="Johns Hopkins University",
+        comments="Strong applicant",
+        date_added="2026-01-01",
+        url="https://example.com/result/123",
+        status="Accepted",
+        term="Fall 2026",
+        us_or_international="US",
+        gpa="3.9",
+        gre="330",
+        gre_v="165",
+        gre_aw="5.0",
+        degree="MS",
+        llm_generated_program="Computer Science",
+        llm_generated_university="Johns Hopkins University",
+    )
+
+    assert applicant.to_dict() == {
+        "p_id": 123,
+        "program": "Computer Science",
+        "university": "Johns Hopkins University",
+        "comments": "Strong applicant",
+        "date_added": "2026-01-01",
+        "url": "https://example.com/result/123",
+        "status": "Accepted",
+        "term": "Fall 2026",
+        "us_or_international": "US",
+        "gpa": "3.9",
+        "gre": "330",
+        "gre_v": "165",
+        "gre_aw": "5.0",
+        "degree": "MS",
+        "llm_generated_program": "Computer Science",
+        "llm_generated_university": "Johns Hopkins University",
+    }

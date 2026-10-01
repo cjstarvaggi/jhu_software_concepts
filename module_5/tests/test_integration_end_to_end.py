@@ -1,17 +1,91 @@
+import json
 import os
 import sys
-import json
 import time
-import pytest
+from pathlib import Path
+
 import psycopg
+import pytest
 
 import src.app as app_module
-from pathlib import Path
-from src.llm_hosting import app as llm_app
-from src.load_data import _clean_float
 from src import load_data
 from src.app import create_app
-from src.models import Applicant, Session
+from src.llm_hosting import app as llm_app
+from src.load_data import _clean_float
+from src.models import Applicant, SESSION_FACTORY
+
+SELECT_APPLICANTS_SQL = """
+SELECT
+    p_id,
+    program,
+    university,
+    comments,
+    date_added,
+    url,
+    status,
+    term,
+    us_or_international,
+    gpa,
+    gre,
+    gre_v,
+    gre_aw,
+    degree,
+    llm_generated_program,
+    llm_generated_university
+FROM applicants
+"""
+
+RESTORE_APPLICANTS_SQL = """
+INSERT INTO applicants (
+    p_id,
+    program,
+    university,
+    comments,
+    date_added,
+    url,
+    status,
+    term,
+    us_or_international,
+    gpa,
+    gre,
+    gre_v,
+    gre_aw,
+    degree,
+    llm_generated_program,
+    llm_generated_university
+)
+VALUES (
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s,
+    %s
+)
+"""
+
+
+def _restore_applicants(cursor, rows):
+    """Restore applicant rows using the fixed applicant table schema.
+
+    The SQL statement contains fixed trusted column names and uses positional
+    parameters for all applicant values.
+
+    :param cursor: Active PostgreSQL cursor.
+    :param rows: Applicant rows previously retrieved from the database.
+    :type rows: list[tuple]
+    """
+    cursor.executemany(RESTORE_APPLICANTS_SQL, rows)
 
 
 @pytest.fixture
@@ -183,7 +257,7 @@ def _get_applicants():
 
     :returns: A list of ``Applicant`` ORM objects stored in the database.
     """
-    with Session() as session:
+    with SESSION_FACTORY() as session:
         return session.query(Applicant).order_by(Applicant.p_id).all()
 
 
@@ -209,9 +283,8 @@ def test_end_to_end_pull_update_render(
     :param clean_data_file: Temporary JSON file used by the fake scraper.
     """
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM applicants;")
+        cursor.execute(SELECT_APPLICANTS_SQL)
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
         cursor.execute("TRUNCATE TABLE applicants;")
     db_connection.commit()
 
@@ -315,16 +388,11 @@ def test_end_to_end_pull_update_render(
     }
 
     mit_applicant = next(
-        applicant
-        for applicant in applicants
-        if applicant.p_id == 900001
+        applicant for applicant in applicants if applicant.p_id == 900001
     )
 
     assert mit_applicant.program == "Computer Science"
-    assert (
-        mit_applicant.university
-        == "Massachusetts Institute of Technology"
-    )
+    assert mit_applicant.university == "Massachusetts Institute of Technology"
     assert mit_applicant.status == "Accepted"
     assert mit_applicant.term == "Fall 2026"
 
@@ -343,46 +411,21 @@ def test_end_to_end_pull_update_render(
 
     html = response.get_data(as_text=True)
 
-    # Question 1:
-    # All four records are Fall 2026.
     assert "Fall 2026 applicant count: 4" in html
-
-    # Question 2:
-    # One of the four records is international -> 25%.
     assert "Percent international: 25.00%" in html
-
-    # Question 3:
-    # Database averages across all four applicants.
     assert "Average GPA: 3.73" in html
     assert "Average GRE Quantitative: 165.00" in html
     assert "Average GRE Verbal: 160.00" in html
     assert "Average GRE Analytical Writing: 4.50" in html
-
-    # Question 4:
-    # American Fall 2026 GPAs are 3.90, 3.50, and 3.80.
     assert "Average Fall 2026 American applicant GPA: 3.73" in html
-
-    # Question 6:
-    # Three accepted Fall 2026 applicants, GPAs 3.90, 3.70, and 3.80.
     assert "Average Fall 2026 accepted applicant GPA: 3.80" in html
-
-    # Question 8:
-    # Two accepted Fall 2026 Computer Science PhD applicants:
-    # MIT and Stanford.
     assert (
-        "Fall 2026 various university Computer Science PhD "
-        "acceptances: 2"
+        "Fall 2026 various university Computer Science PhD " "acceptances: 2"
     ) in html
 
     with db_connection.cursor() as cursor:
         cursor.execute("TRUNCATE TABLE applicants;")
-        column_names = ", ".join(columns)
-        placeholders = ", ".join(["%s"] * len(columns))
-
-        cursor.executemany(
-            f"INSERT INTO applicants ({column_names}) VALUES ({placeholders})",
-            rows
-        )
+        _restore_applicants(cursor, rows)
     db_connection.commit()
 
 
@@ -407,9 +450,8 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
     :param clean_data_file: Temporary JSON file used by the fake scraper.
     """
     with db_connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM applicants;")
+        cursor.execute(SELECT_APPLICANTS_SQL)
         rows = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
         cursor.execute("TRUNCATE TABLE applicants;")
     db_connection.commit()
 
@@ -470,11 +512,7 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
 
         pull_count += 1
 
-        records = (
-            first_pull_records
-            if pull_count == 1
-            else second_pull_records
-        )
+        records = first_pull_records if pull_count == 1 else second_pull_records
 
         output_file = data_file or str(clean_data_file)
 
@@ -518,9 +556,7 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
     }
 
     first_applicant = next(
-        applicant
-        for applicant in applicants
-        if applicant.p_id == 910001
+        applicant for applicant in applicants if applicant.p_id == 910001
     )
 
     assert first_applicant.status == "Accepted"
@@ -544,11 +580,7 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
         910003,
     }
 
-    matching = [
-        applicant
-        for applicant in applicants
-        if applicant.p_id == 910001
-    ]
+    matching = [applicant for applicant in applicants if applicant.p_id == 910001]
 
     assert len(matching) == 1
 
@@ -558,18 +590,14 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
     assert float(updated_applicant.gpa) == pytest.approx(3.90)
 
     existing_applicant = next(
-        applicant
-        for applicant in applicants
-        if applicant.p_id == 910002
+        applicant for applicant in applicants if applicant.p_id == 910002
     )
 
     assert existing_applicant.program == "Physics"
     assert existing_applicant.university == "West Virginia University"
 
     new_applicant = next(
-        applicant
-        for applicant in applicants
-        if applicant.p_id == 910003
+        applicant for applicant in applicants if applicant.p_id == 910003
     )
 
     assert new_applicant.program == "Mathematics"
@@ -579,13 +607,7 @@ def test_multiple_pulls_are_idempotent_for_overlapping_data(
 
     with db_connection.cursor() as cursor:
         cursor.execute("TRUNCATE TABLE applicants;")
-        column_names = ", ".join(columns)
-        placeholders = ", ".join(["%s"] * len(columns))
-
-        cursor.executemany(
-            f"INSERT INTO applicants ({column_names}) VALUES ({placeholders})",
-            rows
-        )
+        _restore_applicants(cursor, rows)
     db_connection.commit()
 
 
@@ -595,7 +617,6 @@ def test_load_data_invalid_p_id():
 
     The test supplies a result URL whose identifier is not numeric and
     verifies that ``_transform_record`` returns ``None``.
-
     """
     applicant = {
         "url": "https://www.thegradcafe.com/result/not-a-number",
@@ -618,50 +639,94 @@ def test_read_lines_missing_file():
 
 @pytest.mark.integration
 def test_load_llm_cached(monkeypatch):
-    """Verify that an already-loaded LLM instance is returned unchanged.
+    """Verify that ``_load_llm`` returns the cached model instance.
 
-    :param monkeypatch: Pytest fixture used to provide the cached LLM object.
+    The Hugging Face download and :class:`llama_cpp.Llama` constructor are
+    replaced with test doubles. The test verifies that calling ``_load_llm``
+    twice returns the same cached object and that the model is downloaded and
+    initialized only once.
+
+    :param monkeypatch: Pytest fixture used to replace the model-loading
+        dependencies with test doubles.
     """
-    cached = object()
-    monkeypatch.setattr(llm_app, "_LLM", cached)
+    calls = {"download": 0, "llama": 0}
 
-    assert llm_app._load_llm() is cached
+    cached = object()
+
+    def fake_download(**kwargs):
+        calls["download"] += 1
+        return "fake-model.gguf"
+
+    class FakeLlama:
+        def __new__(cls, **kwargs):
+            calls["llama"] += 1
+            return cached
+
+    monkeypatch.setattr(llm_app, "hf_hub_download", fake_download)
+    monkeypatch.setattr(llm_app, "Llama", FakeLlama)
+
+    llm_app._load_llm.cache_clear()
+
+    first = llm_app._load_llm()
+    second = llm_app._load_llm()
+
+    assert first is cached
+    assert second is cached
+    assert first is second
+
+    assert calls["download"] == 1
+    assert calls["llama"] == 1
+
+    llm_app._load_llm.cache_clear()
 
 
 @pytest.mark.integration
 def test_load_llm_initializes(monkeypatch):
-    """Verify that the LLM is initialized with the configured model settings.
+    """Verify that ``_load_llm`` initializes ``Llama`` correctly.
 
-    The model download and ``Llama`` constructor are replaced with test
-    doubles. The test confirms that the downloaded model path and configured
-    context, thread, GPU-layer, and verbosity settings are passed to the
-    constructor.
+    The Hugging Face download and :class:`llama_cpp.Llama` constructor are
+    replaced with test doubles. The test verifies that the configured model
+    repository, filename, local directory, context size, thread count,
+    GPU-layer count, and verbosity settings are passed to the appropriate
+    functions.
 
-    :param monkeypatch: Pytest fixture used to replace model-loading
-        dependencies.
+    :param monkeypatch: Pytest fixture used to replace the model-loading
+        dependencies with test doubles.
     """
     calls = {}
 
+    def fake_download(**kwargs):
+        calls["download"] = kwargs
+        return "fake-model.gguf"
+
     class FakeLlama:
         def __init__(self, **kwargs):
-            calls.update(kwargs)
+            calls["llama"] = kwargs
 
-    monkeypatch.setattr(llm_app, "_LLM", None)
-    monkeypatch.setattr(
-        llm_app,
-        "hf_hub_download",
-        lambda **kwargs: "fake-model.gguf",
-    )
+    monkeypatch.setattr(llm_app, "hf_hub_download", fake_download)
     monkeypatch.setattr(llm_app, "Llama", FakeLlama)
+
+    llm_app._load_llm.cache_clear()
 
     result = llm_app._load_llm()
 
     assert isinstance(result, FakeLlama)
-    assert calls["model_path"] == "fake-model.gguf"
-    assert calls["n_ctx"] == llm_app.N_CTX
-    assert calls["n_threads"] == llm_app.N_THREADS
-    assert calls["n_gpu_layers"] == llm_app.N_GPU_LAYERS
-    assert calls["verbose"] is False
+
+    assert calls["download"] == {
+        "repo_id": llm_app.MODEL_REPO,
+        "filename": llm_app.MODEL_FILE,
+        "local_dir": "models",
+    }
+
+    assert calls["llama"] == {
+        "model_path": "fake-model.gguf",
+        "n_ctx": llm_app.N_CTX,
+        "n_threads": llm_app.N_THREADS,
+        "n_gpu_layers": llm_app.N_GPU_LAYERS,
+        "verbose": False,
+    }
+
+    llm_app._load_llm.cache_clear()
 
 
 @pytest.mark.integration
@@ -674,11 +739,14 @@ def test_best_match_branches():
     """
     assert llm_app._best_match("", ["A"]) is None
     assert llm_app._best_match("A", []) is None
-    assert llm_app._best_match(
-        "completely different",
-        ["Alpha"],
-        cutoff=0.99,
-    ) is None
+    assert (
+        llm_app._best_match(
+            "completely different",
+            ["Alpha"],
+            cutoff=0.99,
+        )
+        is None
+    )
     assert llm_app._best_match("Alpha", ["Alpha"]) == "Alpha"
 
 
@@ -704,8 +772,7 @@ def test_post_normalize_program_branches(monkeypatch):
     )
 
     assert (
-        llm_app._post_normalize_program("Information Studies")
-        == "Information Studies"
+        llm_app._post_normalize_program("Information Studies") == "Information Studies"
     )
 
     assert llm_app._post_normalize_program("  mathematics  ") == "Mathematics"
@@ -777,6 +844,7 @@ def test_call_llm_invalid_json_and_no_normalization(monkeypatch):
 
     :param monkeypatch: Pytest fixture used to replace the LLM loader.
     """
+
     class FakeLLM:
         def create_chat_completion(self, **kwargs):
             return {
@@ -815,6 +883,7 @@ def test_call_llm_json_object_with_normalization(monkeypatch):
     :param monkeypatch: Pytest fixture used to replace the LLM loader and
         canonical value lists.
     """
+
     class FakeLLM:
         def create_chat_completion(self, **kwargs):
             return {
@@ -822,7 +891,7 @@ def test_call_llm_json_object_with_normalization(monkeypatch):
                     {
                         "message": {
                             "content": (
-                                'Here is the result: '
+                                "Here is the result: "
                                 '{"standardized_program": "Mathematic", '
                                 '"standardized_university": "McG"}'
                             ),
@@ -1249,3 +1318,21 @@ def test_main_file_entrypoint(monkeypatch, tmp_path):
         "append": True,
         "to_stdout": True,
     }
+
+
+@pytest.mark.integration
+def test_parse_llm_response_rejects_non_object():
+    """Verify that a non-object JSON response falls back to input values.
+
+    A valid JSON response containing a list rather than an object should
+    trigger the ``TypeError`` fallback and return the original program and
+    university values.
+    """
+    program, university = llm_app._parse_llm_response(
+        '["not", "an", "object"]',
+        "Computer Science",
+        "Johns Hopkins University",
+    )
+
+    assert program == "Computer Science"
+    assert university == "Johns Hopkins University"

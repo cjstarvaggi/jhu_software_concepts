@@ -6,6 +6,7 @@ from datetime import datetime
 
 import psycopg
 from dotenv import load_dotenv
+from psycopg import sql
 
 load_dotenv()
 
@@ -13,7 +14,7 @@ DATA_FILE = os.getenv("DATA_FILE")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
-CREATE_TABLE_SQL = """
+CREATE_TABLE_SQL = sql.SQL("""
     CREATE TABLE IF NOT EXISTS applicants (
         p_id INTEGER PRIMARY KEY,
         program TEXT,
@@ -32,9 +33,10 @@ CREATE_TABLE_SQL = """
         llm_generated_program TEXT,
         llm_generated_university TEXT
     );
-"""
+""")
 
-INSERT_SQL = """
+
+INSERT_SQL = sql.SQL("""
     INSERT INTO applicants (
         p_id,
         program,
@@ -54,22 +56,22 @@ INSERT_SQL = """
         llm_generated_university
     )
     VALUES (
-        %(p_id)s,
-        %(program)s,
-        %(university)s,
-        %(comments)s,
-        %(date_added)s,
-        %(url)s,
-        %(status)s,
-        %(term)s,
-        %(us_or_international)s,
-        %(gpa)s,
-        %(gre)s,
-        %(gre_v)s,
-        %(gre_aw)s,
-        %(degree)s,
-        %(llm_generated_program)s,
-        %(llm_generated_university)s
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s
     )
     ON CONFLICT (p_id) DO UPDATE SET
         program = COALESCE(EXCLUDED.program, applicants.program),
@@ -120,17 +122,33 @@ INSERT_SQL = """
         COALESCE(EXCLUDED.url, applicants.url),
         COALESCE(EXCLUDED.status, applicants.status),
         COALESCE(EXCLUDED.term, applicants.term),
-        COALESCE(EXCLUDED.us_or_international, applicants.us_or_international),
+        COALESCE(
+            EXCLUDED.us_or_international,
+            applicants.us_or_international
+        ),
         COALESCE(EXCLUDED.gpa, applicants.gpa),
         COALESCE(EXCLUDED.gre, applicants.gre),
         COALESCE(EXCLUDED.gre_v, applicants.gre_v),
         COALESCE(EXCLUDED.gre_aw, applicants.gre_aw),
         COALESCE(EXCLUDED.degree, applicants.degree),
-        COALESCE(EXCLUDED.llm_generated_program, applicants.llm_generated_program),
-        COALESCE(EXCLUDED.llm_generated_university, applicants.llm_generated_university)
-    )
-    RETURNING p_id;
-"""
+        COALESCE(
+            EXCLUDED.llm_generated_program,
+            applicants.llm_generated_program
+        ),
+        COALESCE(
+            EXCLUDED.llm_generated_university,
+            applicants.llm_generated_university
+        )
+    );
+""")
+
+
+CHECK_EXISTS_SQL = sql.SQL("""
+    SELECT 1
+    FROM applicants
+    WHERE p_id = %s
+    LIMIT 1
+""")
 
 
 def _clean_text(value):
@@ -276,6 +294,36 @@ def _transform_record(applicant):
     }
 
 
+def _insert_params(record):
+    """
+    Build the parameter sequence for an applicant record.
+
+    :param record: Database-ready applicant record.
+    :type record: dict
+    :returns: Values corresponding to the placeholders in ``INSERT_SQL``.
+    :rtype: list
+    """
+
+    return [
+        record["p_id"],
+        record["program"],
+        record["university"],
+        record["comments"],
+        record["date_added"],
+        record["url"],
+        record["status"],
+        record["term"],
+        record["us_or_international"],
+        record["gpa"],
+        record["gre"],
+        record["gre_v"],
+        record["gre_aw"],
+        record["degree"],
+        record["llm_generated_program"],
+        record["llm_generated_university"],
+    ]
+
+
 def main(rollback=False, data_file=None):
     """
     Load applicant data from JSON and synchronize it with PostgreSQL.
@@ -292,6 +340,8 @@ def main(rollback=False, data_file=None):
     :param rollback: If ``True``, roll back the transaction instead of
         committing changes.
     :type rollback: bool
+    :param data_file: Path to the JSON data file. Defaults to ``DATA_FILE``.
+    :type data_file: str or None
     :raises Exception: Re-raises any exception encountered while loading
         or writing applicant data.
     """
@@ -313,7 +363,11 @@ def main(rollback=False, data_file=None):
     with psycopg.connect(connection_string) as conn:
         try:
             with conn.cursor() as cursor:
-                cursor.execute(CREATE_TABLE_SQL)
+                create_table_stmt = CREATE_TABLE_SQL
+                check_exists_stmt = CHECK_EXISTS_SQL
+                insert_stmt = INSERT_SQL
+
+                cursor.execute(create_table_stmt)
 
                 for applicant in applicants:
                     record = _transform_record(applicant)
@@ -322,18 +376,19 @@ def main(rollback=False, data_file=None):
                         skipped += 1
                         continue
 
-                    # Check whether the record already exists.
-                    cursor.execute(
-                        "SELECT 1 FROM applicants WHERE p_id = %(p_id)s",
-                        {"p_id": record["p_id"]},
-                    )
+                    check_exists_params = [record["p_id"]]
+
+                    cursor.execute(check_exists_stmt, check_exists_params)
+
                     existed = cursor.fetchone() is not None
 
-                    cursor.execute(INSERT_SQL, record)
+                    insert_params = _insert_params(record)
+
+                    cursor.execute(insert_stmt, insert_params)
 
                     if not existed:
                         inserted += 1
-                    elif cursor.fetchone() is not None:
+                    elif cursor.rowcount == 1:
                         updated += 1
                     else:
                         unchanged += 1

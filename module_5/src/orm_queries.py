@@ -22,7 +22,8 @@ def get_applicant(p_id):
     session = SESSION_FACTORY()
 
     try:
-        applicant = session.get(Applicant, p_id)
+        statement = select(Applicant).where(Applicant.p_id == p_id).limit(1)
+        applicant = session.execute(statement).scalar_one_or_none()
 
         if applicant is None:
             return None
@@ -127,7 +128,7 @@ def _question_3(session, print_string=True):
     Calculate average GPA, GRE Quantitative, GRE Verbal, and GRE Analytical
     Writing scores across applicants who provide each metric.
 
-    :param session: Active SQLAlchemy session used to execute the queries.
+    :param session: Active SQLAlchemy session used to execute the query.
     :type session: sqlalchemy.orm.Session
     :param print_string: If ``True``, print the formatted results. If
         ``False``, return the results as a list of strings instead.
@@ -190,6 +191,7 @@ def _question_4(session, print_string=True):
 
     result = session.execute(statement).scalar_one_or_none()
     result_string = f"Average Fall 2026 American applicant GPA: {result:.2f}"
+
     if print_string:
         print(f"4. {result_string}")
         return None
@@ -223,8 +225,9 @@ def _question_5(session, print_string=True):
 
     total = session.execute(total_statement).scalar_one()
     accepted = session.execute(accepted_statement).scalar_one()
+
     if total == 0:
-        result_string = "Fall 2025 acceptance percentage: N/A (no Fall 2025 entries)"
+        result_string = "Fall 2025 acceptance percentage: N/A " "(no Fall 2025 entries)"
     else:
         percentage = (accepted / total) * 100
         result_string = f"Fall 2025 acceptance percentage: {percentage:.2f}%"
@@ -260,6 +263,7 @@ def _question_6(session, print_string=True):
 
     result = session.execute(statement).scalar_one_or_none()
     result_string = f"Average Fall 2026 accepted applicant GPA: {result:.2f}"
+
     if print_string:
         print(f"6. {result_string}")
         return None
@@ -288,6 +292,7 @@ def _question_7(session, print_string=True):
         Applicant.university.ilike("%Johns Hopkins University%"),
         Applicant.university.ilike("%JHU%"),
     ]
+
     statement = select(count(Applicant.p_id)).where(
         and_(
             or_(*university_conditions),
@@ -295,6 +300,7 @@ def _question_7(session, print_string=True):
             Applicant.program.ilike("Computer Science"),
         )
     )
+
     result = session.execute(statement).scalar_one()
     result_string = f"JHU Computer Science masters applicants: {result:,}"
 
@@ -344,8 +350,9 @@ def _question_8(session, print_string=True):
     result = session.execute(statement).scalar_one()
 
     result_string = (
-        f"Fall 2026 various university Computer Science PhD acceptances: {result:,}"
+        "Fall 2026 various university Computer Science PhD " f"acceptances: {result:,}"
     )
+
     if print_string:
         print(f"8. {result_string}")
         return None
@@ -423,7 +430,11 @@ def _question_9(session, print_string=True):
         print(f"9. {result_string_3}")
         return None
 
-    return [result_string_1, result_string_2, result_string_3]
+    return [
+        result_string_1,
+        result_string_2,
+        result_string_3,
+    ]
 
 
 def _question_10(session, print_string=True):
@@ -446,6 +457,7 @@ def _question_10(session, print_string=True):
         Applicant.university.ilike("%West Virginia University%"),
         Applicant.university.ilike("%WVU%"),
     ]
+
     statement = select(count(Applicant.p_id)).where(
         and_(
             or_(*university_conditions),
@@ -498,6 +510,7 @@ def _question_11(session, print_string=True):
     result = session.execute(statement).scalar_one_or_none()
 
     result_string = f"JHU Masters acceptances average GPA: {result:.2f}"
+
     if print_string:
         print(f"11. {result_string}")
         return None

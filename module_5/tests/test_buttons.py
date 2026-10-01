@@ -6,7 +6,6 @@ from src import app as app_module, scrape, load_data
 from src.app import create_app
 from src.load_data import main as load_sql_data
 
-
 BASE_URL = "https://www.thegradcafe.com"
 RESULT_URL = f"{BASE_URL}/result/12345"
 SURVEY_URL = f"{BASE_URL}/survey"
@@ -43,6 +42,7 @@ RESULT_HTML = """
 <p>Notes</p>
 """
 
+
 @pytest.mark.buttons
 def test_pull_data_returns_ok():
     """Verify that ``POST /pull-data`` successfully starts a data pull.
@@ -51,6 +51,7 @@ def test_pull_data_returns_ok():
     real background data-pull process. The endpoint should return HTTP 200
     and a JSON response containing ``ok=True``.
     """
+
     def fake_pull():
         return None
 
@@ -72,10 +73,9 @@ def test_pull_data_returns_ok():
 def test_update_analysis_returns_busy_and_does_not_update():
     """Verify that analysis updates are rejected while a pull is running.
 
-    A fake active pull thread is installed and the configured analysis
-    update function is monitored. The endpoint should return HTTP 409,
-    indicate that the application is busy, and avoid invoking the update
-    function.
+    A fake active pull thread is installed in ``pull_runtime``. The endpoint
+    should return HTTP 409, indicate that the application is busy, and avoid
+    invoking the configured analysis update function.
     """
     update_called = False
 
@@ -91,17 +91,28 @@ def test_update_analysis_returns_busy_and_does_not_update():
     )
 
     class FakeThread:
+        """Represent an active background pull thread."""
+
         def is_alive(self):
             return True
 
-    app_module.pull_thread = FakeThread()
+    app_module.pull_runtime["thread"] = FakeThread()
 
-    with app.test_client() as client:
-        response = client.post("/update-analysis")
+    try:
+        with app.test_client() as client:
+            response = client.post("/update-analysis")
 
-    assert response.status_code == 409
-    assert response.get_json()["busy"] is True
-    assert update_called is False
+        assert response.status_code == 409
+        assert response.get_json() == {
+            "busy": True,
+            "state": "busy",
+            "message": (
+                "New data is currently being retrieved. " "Analysis was not refreshed."
+            ),
+        }
+        assert update_called is False
+    finally:
+        app_module.pull_runtime["thread"] = None
 
 
 @pytest.mark.buttons
@@ -132,18 +143,14 @@ def test_pull_data_triggers_loader_with_scraper_rows(monkeypatch, tmp_path):
         )
 
     def fake_load_clean_data(path):
-        return json.loads(
-            data_file.read_text(encoding="utf-8")
-        )
+        return json.loads(data_file.read_text(encoding="utf-8"))
 
     def fake_clean(data):
         return data
 
     def fake_loader():
         nonlocal loaded_rows
-        loaded_rows = json.loads(
-            data_file.read_text(encoding="utf-8")
-        )
+        loaded_rows = json.loads(data_file.read_text(encoding="utf-8"))
 
     monkeypatch.setattr(
         app_module,
@@ -164,12 +171,15 @@ def test_pull_data_triggers_loader_with_scraper_rows(monkeypatch, tmp_path):
 def test_pull_data_returns_busy_while_pull_is_running():
     """Verify that ``POST /pull-data`` rejects a concurrent data pull.
 
-    When the global pull thread reports that it is still alive, the
+    When the configured pull thread reports that it is still alive, the
     endpoint should return HTTP 409 with ``busy=True`` rather than starting
     another pull.
     """
+    pull_called = False
+
     def fake_pull():
-        return None
+        nonlocal pull_called
+        pull_called = True
 
     app = create_app(
         {
@@ -179,16 +189,26 @@ def test_pull_data_returns_busy_while_pull_is_running():
     )
 
     class FakeThread:
+        """Represent an active background pull thread."""
+
         def is_alive(self):
             return True
 
-    app_module.pull_thread = FakeThread()
+    app_module.pull_runtime["thread"] = FakeThread()
 
-    with app.test_client() as client:
-        response = client.post("/pull-data")
+    try:
+        with app.test_client() as client:
+            response = client.post("/pull-data")
 
-    assert response.status_code == 409
-    assert response.get_json()["busy"] is True
+        assert response.status_code == 409
+        assert response.get_json() == {
+            "busy": True,
+            "state": app_module.pull_status["state"],
+            "message": app_module.pull_status["message"],
+        }
+        assert pull_called is False
+    finally:
+        app_module.pull_runtime["thread"] = None
 
 
 @pytest.fixture(autouse=True)
@@ -268,10 +288,7 @@ def test_run_pull_completes_successfully(monkeypatch, tmp_path):
     app_module._run_pull()
 
     assert app_module.pull_status["state"] == "complete"
-    assert (
-        app_module.pull_status["message"]
-        == "Data pull completed successfully."
-    )
+    assert app_module.pull_status["message"] == "Data pull completed successfully."
 
 
 @pytest.mark.buttons
@@ -284,6 +301,7 @@ def test_run_pull_handles_error(monkeypatch):
 
     :param monkeypatch: Pytest fixture used to replace the scraper.
     """
+
     def failing_scrape(*args, **kwargs):
         raise RuntimeError("test failure")
 
@@ -385,6 +403,7 @@ def _mock_driver(monkeypatch):
     :param monkeypatch: Pytest fixture used to replace Chrome-related
         scraper functions.
     """
+
     class FakeDriver:
         def quit(self):
             pass
@@ -394,33 +413,57 @@ def _mock_driver(monkeypatch):
 
 
 @pytest.mark.buttons
-def test_scrape_data_stops_when_existing_data_reached(monkeypatch, tmp_path):
-    """Verify that scraping stops when an existing result boundary is reached.
+def test_scrape_data_stops_when_next_url_matches_current_url(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    """Verify that a repeated pagination URL stops the scraping loop.
 
-    Existing applicant data contains a result URL that is encountered by
-    the survey scraper. No new records should be processed, and the
-    existing records should be returned unchanged.
+    When the survey page reports its own URL as the next page, the scraper
+    should terminate rather than entering an infinite loop.
 
     :param monkeypatch: Pytest fixture used to replace scraper behavior.
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
+    :param capsys: Pytest fixture used to capture standard output.
     """
     path = tmp_path / "data.json"
-    existing = {"url": f"{BASE_URL}/result/100"}
+    path.write_text("[]", encoding="utf-8")
 
-    path.write_text(json.dumps([existing]), encoding="utf-8")
+    class FakeDriver:
+        def quit(self):
+            pass
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
-
-    monkeypatch.setattr(scrape, "_scrape_survey_page",
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
         lambda driver, url: (
             [],
-            [existing["url"]],
-            None,
+            [],
+            url,
         ),
     )
 
-    assert scrape.scrape_data(SURVEY_URL) == [existing]
+    result = scrape.scrape_data(
+        scrape.SURVEY_URL,
+        data_file=str(path),
+    )
+
+    captured = capsys.readouterr().out
+
+    assert result == []
+    assert "WARNING: Next URL is the same as the current URL" in captured
+    assert "Stopping to prevent an infinite loop" in captured
 
 
 @pytest.mark.buttons
@@ -437,34 +480,57 @@ def test_scrape_data_processes_new_results(monkeypatch, tmp_path):
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
+    result_url = f"{scrape.BASE_URL}/result/123"
 
-    url = f"{BASE_URL}/result/200"
+    class FakeDriver:
+        """Represent the Selenium driver used by the test."""
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page",
-        lambda driver, page: (
-            [{
-                "date_added": "Sep 23, 2026",
-                "gpa": "3.8",
-                "term": "Fall 2026",
-            }],
-            [url],
+        def quit(self):
+            pass
+
+    applicant = {
+        "url": result_url,
+        "university": "Johns Hopkins University",
+        "program_name": "Computer Science",
+    }
+
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
+        lambda driver, url: (
+            [
+                {
+                    "date_added": "Jan 01, 2026",
+                    "gpa": "3.9",
+                    "term": "Fall 2026",
+                }
+            ],
+            [result_url],
             None,
         ),
     )
-
-    monkeypatch.setattr(scrape, "_process_batch",
-        lambda driver, batch, existing_urls: [{
-            "url": url,
-            "program_name": "Computer Science",
-        }],
+    monkeypatch.setattr(
+        scrape,
+        "_process_batch",
+        lambda driver, batch, existing_urls: [applicant],
     )
 
-    result = scrape.scrape_data(SURVEY_URL)
+    result = scrape.scrape_data(
+        scrape.SURVEY_URL,
+        data_file=str(path),
+    )
 
-    assert result[0]["url"] == url
-    assert result[0]["program_name"] == "Computer Science"
+    assert result == [applicant]
 
 
 @pytest.mark.buttons
@@ -481,155 +547,262 @@ def test_scrape_data_moves_to_next_page(monkeypatch, tmp_path):
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
+    first_url = scrape.SURVEY_URL
+    second_url = f"{scrape.BASE_URL}/survey?page=2"
+    requested_urls = []
 
-    first = SURVEY_URL
-    second = f"{BASE_URL}/survey?page=2"
-    calls = []
+    class FakeDriver:
+        """Represent the Selenium driver used by the test."""
 
-    def fake_scrape_page(driver, url):
-        calls.append(url)
+        def quit(self):
+            pass
 
-        return (
-            ([], [], second)
-            if url == first
-            else ([], [], None)
-        )
+    def fake_scrape_survey_page(driver, url):
+        """Return a different pagination result for each requested page."""
+        requested_urls.append(url)
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page", fake_scrape_page)
+        if url == first_url:
+            return [], [], second_url
 
-    assert scrape.scrape_data(first) == []
-    assert calls == [first, second]
+        return [], [], None
+
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
+        fake_scrape_survey_page,
+    )
+    monkeypatch.setattr(
+        scrape.time,
+        "sleep",
+        lambda seconds: None,
+    )
+
+    result = scrape.scrape_data(
+        first_url,
+        data_file=str(path),
+    )
+
+    assert result == []
+    assert requested_urls == [
+        first_url,
+        second_url,
+    ]
 
 
 @pytest.mark.buttons
-def test_scrape_data_retries_after_survey_error(monkeypatch, tmp_path, capsys):
+def test_scrape_data_retries_after_survey_error(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
     """Verify that a survey-page failure is retried after five seconds.
 
-    The first page request raises an exception and the second succeeds.
-    The scraper should sleep for five seconds, save a checkpoint, print
-    the expected error and retry messages, and ultimately return an empty
-    result set.
+    The first page request raises a supported exception and the second
+    succeeds. The scraper should save a checkpoint, sleep for five seconds,
+    print the error message, and retry.
 
-    :param monkeypatch: Pytest fixture used to replace scraper behavior
-        and the sleep function.
+    :param monkeypatch: Pytest fixture used to replace scraper behavior and
+        the sleep function.
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
     :param capsys: Pytest fixture used to capture standard output.
     """
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
-
+    calls = []
     sleep_calls = []
-    monkeypatch.setattr(scrape.time, "sleep", lambda seconds: sleep_calls.append(seconds))
 
-    calls = {"count": 0}
+    class FakeDriver:
+        """Represent the Selenium driver used by the test."""
 
-    def fake_scrape_page(driver, url):
-        calls["count"] += 1
+        def quit(self):
+            pass
 
-        if calls["count"] == 1:
-            raise RuntimeError("temporary survey failure")
+    def fake_scrape_survey_page(driver, url):
+        """Fail once, then return an empty survey page."""
+        calls.append(url)
 
-        return ([], [], None)
+        if len(calls) == 1:
+            raise ConnectionError("temporary connection failure")
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page", fake_scrape_page)
+        return [], [], None
 
-    result = scrape.scrape_data(SURVEY_URL)
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
+        fake_scrape_survey_page,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "save_data",
+        lambda data, file_path=None: None,
+    )
+    monkeypatch.setattr(
+        scrape.time,
+        "sleep",
+        lambda seconds: sleep_calls.append(seconds),
+    )
+
+    result = scrape.scrape_data(
+        scrape.SURVEY_URL,
+        data_file=str(path),
+    )
+
+    captured = capsys.readouterr().out
 
     assert result == []
-    assert calls["count"] == 2
+    assert calls == [
+        scrape.SURVEY_URL,
+        scrape.SURVEY_URL,
+    ]
     assert sleep_calls == [5]
-
-    output = capsys.readouterr().out
-
-    assert "ERROR loading survey page 1:" in output
-    assert "temporary survey failure" in output
-    assert "Data checkpoint saved" in output
-    assert "Retrying in 5 seconds..." in output
+    assert "temporary connection failure" in captured
 
 
 @pytest.mark.buttons
 def test_scrape_data_skips_invalid_and_existing_urls(monkeypatch, tmp_path):
     """Verify that invalid and already processed result URLs are skipped.
 
-    A survey page containing both an invalid URL and an existing URL should
-    not cause either URL to be passed to the batch processor.
+    A survey page containing an invalid result URL and a result URL that is
+    already present in the data file should not cause either URL to be sent
+    to the batch processor.
 
     :param monkeypatch: Pytest fixture used to replace scraper behavior.
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
     """
     path = tmp_path / "data.json"
     existing_url = f"{BASE_URL}/result/200"
-    existing = {"url": existing_url}
 
-    path.write_text(json.dumps([existing]), encoding="utf-8")
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
+    path.write_text(
+        json.dumps([{"url": existing_url}]),
+        encoding="utf-8",
+    )
 
-    _mock_driver(monkeypatch)
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
 
-    monkeypatch.setattr(scrape, "_get_highest_result_id", lambda data: 100,)
+    class FakeDriver:
+        def quit(self):
+            pass
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page",
+    batch_calls = []
+
+    def fake_process_batch(driver, batch, existing_urls):
+        batch_calls.append(batch)
+        return []
+
+    monkeypatch.setattr(
+        scrape,
+        "_process_batch",
+        fake_process_batch,
+    )
+
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
         lambda driver, url: (
             [],
-            ["not-a-result-url", existing_url],
+            [
+                f"{BASE_URL}/result/not-a-number",
+                existing_url,
+            ],
             None,
         ),
     )
 
-    monkeypatch.setattr(scrape, "_process_batch",
-        lambda *args: pytest.fail("Existing URL should be skipped"),
+    result = scrape.scrape_data(
+        f"{BASE_URL}/survey",
+        data_file=str(path),
     )
 
-    assert scrape.scrape_data(SURVEY_URL) == [existing]
+    assert result == [{"url": existing_url}]
+    assert batch_calls == []
 
 
 @pytest.mark.buttons
-def test_scrape_data_skips_invalid_result_id(monkeypatch, tmp_path):
+def test_scrape_data_skips_invalid_result_id():
     """Verify that result URLs with non-numeric IDs are ignored.
 
-    The scraper should ignore an invalid result URL while processing the
-    page normally. No applicant records are expected from the mocked batch
-    processor.
+    A result URL that does not end in a numeric Grad Cafe result ID should
+    not be included in the list of new results.
 
-    :param monkeypatch: Pytest fixture used to replace scraper behavior.
-    :param tmp_path: Pytest fixture providing a temporary filesystem path.
     """
-    path = tmp_path / "data.json"
-    path.write_text("[]", encoding="utf-8")
+    result_urls = [
+        f"{BASE_URL}/result/invalid",
+        f"{BASE_URL}/result/123",
+    ]
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
+    table_info = [
+        {
+            "date_added": "Jan 01, 2026",
+            "gpa": "3.9",
+            "term": "Fall 2026",
+        },
+        {
+            "date_added": "Jan 02, 2026",
+            "gpa": "3.8",
+            "term": "Fall 2026",
+        },
+    ]
 
-    valid_url = f"{BASE_URL}/result/200"
-    invalid_url = f"{BASE_URL}/result/not-a-number"
-
-    monkeypatch.setattr(scrape, "_scrape_survey_page",
-        lambda driver, url: (
-            [],
-            [invalid_url, valid_url],
-            None,
-        ),
+    new_results, reached_existing_data = scrape._collect_new_results(
+        result_urls=result_urls,
+        table_info=table_info,
+        highest_result_id=0,
+        existing_urls=set(),
     )
 
-    monkeypatch.setattr(scrape, "_process_batch",
-        lambda driver, batch, existing_urls: [],
-    )
+    assert new_results == [
+        {
+            "url": f"{BASE_URL}/result/123",
+            "date_added": "Jan 02, 2026",
+            "gpa": "3.8",
+            "term": "Fall 2026",
+        }
+    ]
 
-    assert scrape.scrape_data(SURVEY_URL) == []
+    assert reached_existing_data is False
 
 
 @pytest.mark.buttons
-def test_scrape_data_stops_when_next_url_matches_current_url(monkeypatch, tmp_path, capsys):
+def test_scrape_data_stops_when_next_url_matches_current_url(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
     """Verify that repeated pagination URLs do not cause an infinite loop.
 
     When a survey page reports itself as its own next page, the scraper
-    should stop and print a warning explaining that the repeated URL is
-    preventing further pagination.
+    should stop and print a warning rather than repeatedly requesting the
+    same page.
 
     :param monkeypatch: Pytest fixture used to replace scraper behavior.
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
@@ -638,35 +811,50 @@ def test_scrape_data_stops_when_next_url_matches_current_url(monkeypatch, tmp_pa
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
+    class FakeDriver:
+        """Represent the Selenium driver used by the test."""
 
-    first_url = SURVEY_URL
+        def quit(self):
+            pass
 
-    monkeypatch.setattr(scrape,"_scrape_survey_page",
-        lambda driver, url: (
-            [],
-            [],
-            first_url,
-        ),
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
+        lambda driver, url: ([], [], url),
     )
 
-    result = scrape.scrape_data(first_url)
+    result = scrape.scrape_data(
+        scrape.SURVEY_URL,
+        data_file=str(path),
+    )
+
+    captured = capsys.readouterr().out
 
     assert result == []
-
-    output = capsys.readouterr().out
-
-    assert "WARNING: Next URL is the same " in output
-    assert "Stopping to prevent an infinite loop" in output
+    assert "WARNING: Next URL is the same as the current URL" in captured
+    assert "Stopping to prevent an infinite loop" in captured
 
 
 @pytest.mark.buttons
-def test_scrape_data_stops_when_next_url_is_same(monkeypatch, tmp_path, capsys):
+def test_scrape_data_stops_when_next_url_is_same(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
     """Verify that an unchanged next-page URL terminates scraping.
 
-    This test covers the same loop-protection behavior using the current
-    page URL supplied directly by the mocked survey-page scraper.
+    When the survey-page scraper returns the current URL as its next URL,
+    the scraper should stop instead of repeatedly requesting the same page.
 
     :param monkeypatch: Pytest fixture used to replace scraper behavior.
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
@@ -675,23 +863,38 @@ def test_scrape_data_stops_when_next_url_is_same(monkeypatch, tmp_path, capsys):
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
+    class FakeDriver:
+        """Represent the Selenium driver used by the test."""
 
-    monkeypatch.setattr(scrape,"_scrape_survey_page",
-        lambda driver, url: (
-            [],
-            [],
-            url,
-        ),
+        def quit(self):
+            pass
+
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: FakeDriver(),
+    )
+    monkeypatch.setattr(
+        scrape,
+        "_scrape_survey_page",
+        lambda driver, url: ([], [], url),
     )
 
-    assert scrape.scrape_data(SURVEY_URL) == []
+    result = scrape.scrape_data(
+        scrape.SURVEY_URL,
+        data_file=str(path),
+    )
 
-    output = capsys.readouterr().out
+    captured = capsys.readouterr().out
 
-    assert "WARNING: Next URL is the same as the current URL" in output
-    assert "Stopping to prevent an infinite loop" in output
+    assert result == []
+    assert "WARNING: Next URL is the same as the current URL" in captured
+    assert "Stopping to prevent an infinite loop" in captured
 
 
 @pytest.mark.buttons
@@ -699,8 +902,8 @@ def test_scrape_data_waits_for_authentication(monkeypatch, tmp_path):
     """Verify that scraping waits for a supplied authentication event.
 
     A fake authentication event records whether its ``wait()`` method was
-    called. The scraper should wait for the event before processing the
-    survey page.
+    called. The scraper should wait for authentication after launching
+    Chrome and before connecting to the Selenium driver.
 
     :param monkeypatch: Pytest fixture used to replace scraper behavior.
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
@@ -708,29 +911,48 @@ def test_scrape_data_waits_for_authentication(monkeypatch, tmp_path):
     path = tmp_path / "data.json"
     path.write_text("[]", encoding="utf-8")
 
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
-    _mock_driver(monkeypatch)
+    calls = []
 
-    class FakeAuthenticationEvent:
-        def __init__(self):
-            self.wait_called = False
-
+    class FakeEvent:
         def wait(self):
-            self.wait_called = True
+            calls.append("wait")
 
-    event = FakeAuthenticationEvent()
+    class FakeDriver:
+        def quit(self):
+            calls.append("quit")
 
-    monkeypatch.setattr(scrape, "_scrape_survey_page",
-        lambda driver, url: (
-            [],
-            [],
-            None,
+    monkeypatch.setattr(
+        scrape,
+        "_initialize_chrome",
+        lambda *args, **kwargs: calls.append("initialize"),
+    )
+
+    monkeypatch.setattr(
+        scrape,
+        "_commandeer_chrome",
+        lambda *args, **kwargs: (calls.append("commandeer") or FakeDriver()),
+    )
+
+    monkeypatch.setattr(
+        scrape,
+        "_run_scrape_loop",
+        lambda driver, survey_start_url, state: (
+            state.data,
+            0,
         ),
     )
 
-    assert scrape.scrape_data(SURVEY_URL, authentication_event=event) == []
+    scrape.scrape_data(
+        scrape.SURVEY_URL,
+        authentication_event=FakeEvent(),
+        data_file=str(path),
+    )
 
-    assert event.wait_called is True
+    assert calls[:3] == [
+        "initialize",
+        "wait",
+        "commandeer",
+    ]
 
 
 @pytest.mark.buttons
@@ -750,57 +972,65 @@ def test_new_applicant_item_defaults():
 
 
 @pytest.mark.buttons
-def test_scrape_load_data(tmp_path, monkeypatch):
-    """Verify loading and validation of the scraper's JSON data file.
+def test_scrape_load_data(tmp_path):
+    """Verify loading and validation of the scraper JSON data file.
 
     A missing file should produce an empty list. A JSON list should be
-    returned unchanged, while a dictionary-shaped document should raise a
-    ``ValueError``.
+    returned unchanged, while a JSON object should raise ``ValueError``.
 
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
-    :param monkeypatch: Pytest fixture used to configure the scraper's
-        data-file path.
     """
     path = tmp_path / "applicants.json"
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
 
-    assert scrape._load_data() == []
+    assert scrape._load_data(str(path)) == []
 
-    data = [{"url": f"{BASE_URL}/result/12345"}]
-    path.write_text(json.dumps(data), encoding="utf-8")
+    records = [
+        {"url": f"{BASE_URL}/result/123"},
+        {"url": f"{BASE_URL}/result/124"},
+    ]
 
-    assert scrape._load_data() == data
+    path.write_text(
+        json.dumps(records),
+        encoding="utf-8",
+    )
 
-    path.write_text(json.dumps({"rows": data}), encoding="utf-8")
+    assert scrape._load_data(str(path)) == records
 
-    with pytest.raises(ValueError, match="Applicant data must be a list of records."):
-        scrape._load_data()
+    path.write_text(
+        json.dumps({"rows": records}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="must be a list"):
+        scrape._load_data(str(path))
 
 
 @pytest.mark.buttons
-def test_scrape_save_data(tmp_path, monkeypatch):
-    """Verify that applicant data is persisted as valid JSON.
+def test_scrape_save_data(tmp_path):
+    """Verify that applicant data is safely persisted as JSON.
 
     The saved JSON should contain the supplied records, and the temporary
     ``.tmp`` file used during saving should not remain after the operation.
 
     :param tmp_path: Pytest fixture providing a temporary filesystem path.
-    :param monkeypatch: Pytest fixture used to configure the scraper's
-        data-file path.
     """
     path = tmp_path / "applicants.json"
-    monkeypatch.setattr(scrape, "data_file_name", str(path))
 
-    data = [
-        {"url": f"{BASE_URL}/result/12345"},
-        {"url": f"{BASE_URL}/result/12346"},
+    records = [
+        {
+            "program_name": "Computer Science",
+            "university": "Johns Hopkins University",
+        }
     ]
 
-    scrape.save_data(data)
+    scrape.save_data(records, str(path))
 
     assert path.exists()
-    assert json.loads(path.read_text(encoding="utf-8")) == data
     assert not (tmp_path / "applicants.json.tmp").exists()
+
+    saved_records = json.loads(path.read_text(encoding="utf-8"))
+
+    assert saved_records == records
 
 
 @pytest.mark.buttons
@@ -859,21 +1089,29 @@ def test_scrape_initialize_chrome(monkeypatch):
     captured = {}
 
     class FakeProcess:
-        pass
+        """Represent the Chrome process returned by the test double."""
 
-    monkeypatch.setattr(scrape.subprocess, "Popen",
-        lambda command: (
-            captured.update(command=command) or FakeProcess()
-        ),
+    def fake_popen(command):
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        scrape.subprocess,
+        "Popen",
+        fake_popen,
     )
 
-    process = scrape._initialize_chrome("https://example.com", port=9999)
+    process = scrape._initialize_chrome(
+        "https://example.com",
+        port=9999,
+    )
 
     assert isinstance(process, FakeProcess)
+
     assert captured["command"] == [
-        scrape.chrome_path,
+        scrape.CHROME_PATH,
         "--remote-debugging-port=9999",
-        f"--user-data-dir={scrape.chrome_profile}",
+        f"--user-data-dir={scrape.CHROME_PROFILE}",
         "--disable-background-networking",
         "--disable-component-update",
         "--disable-default-apps",
@@ -886,33 +1124,36 @@ def test_scrape_initialize_chrome(monkeypatch):
 def test_scrape_commandeer_chrome(monkeypatch):
     """Verify Selenium's connection to the remote Chrome debugger.
 
-    The test confirms that the configured debugger address uses the
-    requested port and that Selenium is configured with an eager page-load
-    strategy.
+    The Selenium ``WebDriver`` constructor is replaced with a fake
+    implementation so the test can inspect the configured debugger address
+    and page-load strategy.
 
-    :param monkeypatch: Pytest fixture used to replace Selenium's Chrome
-        constructor.
+    :param monkeypatch: Pytest fixture used to replace ``WebDriver``.
     """
     captured = {}
 
     class FakeDriver:
-        pass
+        """Represent the Selenium driver returned by the test double."""
 
-    def fake_chrome(options):
+    def fake_webdriver(options):
         captured["options"] = options
         return FakeDriver()
 
-    monkeypatch.setattr(scrape.webdriver, "Chrome", fake_chrome)
+    monkeypatch.setattr(
+        scrape,
+        "WebDriver",
+        fake_webdriver,
+    )
 
     driver = scrape._commandeer_chrome(port=9999)
 
     assert isinstance(driver, FakeDriver)
-    assert (
-        captured["options"]
-        .experimental_options["debuggerAddress"]
-        == "127.0.0.1:9999"
-    )
-    assert captured["options"].page_load_strategy == "eager"
+
+    options = captured["options"]
+
+    assert options.page_load_strategy == "eager"
+
+    assert options.experimental_options["debuggerAddress"] == ("127.0.0.1:9999")
 
 
 @pytest.mark.buttons
@@ -924,6 +1165,7 @@ def test_scrape_survey_page():
     absolute result URLs, and the next survey URL while skipping an
     incomplete row.
     """
+
     class FakeDriver:
         page_source = """
         <table>
@@ -984,6 +1226,7 @@ def test_scrape_survey_page_skips_row_without_sibling():
     A survey row without the expected sibling metadata row should not
     produce applicant information, result URLs, or a pagination URL.
     """
+
     class FakeDriver:
         page_source = """
         <table>
@@ -1144,13 +1387,13 @@ def test_fetch_pages_in_browser():
     The returned browser results should preserve the URL, status, and HTML
     for each request.
     """
+
     class FakeDriver:
         def execute_async_script(self, script, urls):
             self.script = script
             self.urls = urls
             return [
-                {"url": url, "status": 200, "html": "<html></html>"}
-                for url in urls
+                {"url": url, "status": 200, "html": "<html></html>"} for url in urls
             ]
 
     urls = [
@@ -1176,6 +1419,7 @@ def test_fetch_pages_in_browser_empty_urls():
     No asynchronous browser script should be executed when there are no
     result URLs to fetch.
     """
+
     class FakeDriver:
         def execute_async_script(self, *args):
             raise AssertionError("Browser script should not run")
@@ -1193,19 +1437,25 @@ def test_process_batch_adds_valid_records(monkeypatch):
 
     :param monkeypatch: Pytest fixture used to replace browser fetching.
     """
-    batch = [{
-        "url": RESULT_URL,
-        "date_added": "Sep 23, 2026",
-        "gpa": "3.8",
-        "term": "Fall 2026",
-    }]
+    batch = [
+        {
+            "url": RESULT_URL,
+            "date_added": "Sep 23, 2026",
+            "gpa": "3.8",
+            "term": "Fall 2026",
+        }
+    ]
 
-    monkeypatch.setattr(scrape,"_fetch_pages_in_browser",
-        lambda driver, urls: [{
-            "url": urls[0],
-            "status": 200,
-            "html": VALID_BATCH_HTML,
-        }],
+    monkeypatch.setattr(
+        scrape,
+        "_fetch_pages_in_browser",
+        lambda driver, urls: [
+            {
+                "url": urls[0],
+                "status": 200,
+                "html": VALID_BATCH_HTML,
+            }
+        ],
     )
 
     existing_urls = set()
@@ -1247,7 +1497,9 @@ def test_process_batch_skips_failed_and_existing_records(monkeypatch, capsys):
         },
     ]
 
-    monkeypatch.setattr(scrape,"_fetch_pages_in_browser",
+    monkeypatch.setattr(
+        scrape,
+        "_fetch_pages_in_browser",
         lambda driver, urls: [
             {
                 "url": existing_url,
@@ -1286,22 +1538,30 @@ def test_process_batch_skips_parse_errors(monkeypatch, capsys):
     monkeypatch.setattr(
         scrape,
         "_fetch_pages_in_browser",
-        lambda driver, urls: [{
-            "url": url,
-            "status": 200,
-            "html": "<html>invalid result page</html>",
-        }],
+        lambda driver, urls: [
+            {
+                "url": url,
+                "status": 200,
+                "html": "<html>invalid result page</html>",
+            }
+        ],
     )
 
-    assert scrape._process_batch(object(),
-        [{
-            "url": url,
-            "date_added": None,
-            "gpa": None,
-            "term": None,
-        }],
-        set(),
-    ) == []
+    assert (
+        scrape._process_batch(
+            object(),
+            [
+                {
+                    "url": url,
+                    "date_added": None,
+                    "gpa": None,
+                    "term": None,
+                }
+            ],
+            set(),
+        )
+        == []
+    )
 
     output = capsys.readouterr().out
 
@@ -1386,6 +1646,7 @@ def test_main_rolls_back_on_exception(monkeypatch, tmp_path):
 
     assert connection.rollback_called
 
+
 @pytest.mark.buttons
 def test_run_pull_restores_missing_data_file(monkeypatch, tmp_path):
     """
@@ -1438,3 +1699,47 @@ def test_run_pull_restores_missing_data_file(monkeypatch, tmp_path):
 
     assert "DATA_FILE" not in os.environ
     assert app_module.pull_status["state"] == "complete"
+
+
+@pytest.mark.buttons
+def test_collect_new_results_skips_existing_url_and_uses_missing_table_info():
+    """Verify handling of existing URLs and missing table metadata.
+
+    An already-known result URL should be skipped. A new result URL without
+    corresponding table metadata should still be collected using ``None``
+    values for the missing metadata fields.
+    """
+    existing_url = f"{scrape.BASE_URL}/result/100"
+    new_url = f"{scrape.BASE_URL}/result/101"
+
+    existing_urls = {existing_url}
+
+    result_urls = [
+        existing_url,
+        new_url,
+    ]
+
+    table_info = [
+        {
+            "date_added": "Jan 01, 2026",
+            "gpa": "3.9",
+            "term": "Fall 2026",
+        }
+    ]
+
+    new_results, reached_existing_data = scrape._collect_new_results(
+        result_urls=result_urls,
+        table_info=table_info,
+        highest_result_id=0,
+        existing_urls=existing_urls,
+    )
+
+    assert new_results == [
+        {
+            "url": new_url,
+            "date_added": None,
+            "gpa": None,
+            "term": None,
+        }
+    ]
+    assert reached_existing_data is False
