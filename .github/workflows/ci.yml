@@ -41,52 +41,52 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r module_4/requirements.txt
+          python -m pip install -r module_4/requirements.txt
 
-      # 1. Run Pylint and require a perfect score
+      # 1. Pylint
       - name: Run Pylint
-        working-directory: module_5
+        working-directory: module_4
         run: |
-          pylint src --fail-under=10
+          python -m pylint src --fail-under=10
 
-      # 2. Generate dependency.svg with pydeps + Graphviz
+      # 2. pydeps + Graphviz
       - name: Generate dependency graph
-        working-directory: module_5
+        working-directory: module_4
         run: |
-          pydeps src \
+          python -m pydeps src \
             --noshow \
             --output=dependency.svg
           test -f dependency.svg
 
-      # 3. Run Snyk
+      # 3. Snyk
       - name: Install Snyk
         run: |
           npm install -g snyk
 
       - name: Run Snyk
-        working-directory: module_5
+        working-directory: module_4
         run: |
           snyk test || true
 
-      # Initialize PostgreSQL database
+      # Initialize database
       - name: Initialize database
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
           DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
           PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
-        working-directory: module_5
+        working-directory: module_4
         run: |
           python src/load_data.py
 
-      # 4. Run Pytest and require 100% coverage
+      # 4. Pytest + 100% coverage
       - name: Run Pytest
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
           DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
           PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
-        working-directory: module_5
+        working-directory: module_4
         run: |
-          pytest \
+          python -m pytest \
             -m "web or buttons or analysis or db or integration" \
             --cov=src \
             --cov-fail-under=100
