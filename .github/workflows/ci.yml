@@ -44,24 +44,50 @@ jobs:
 
       - name: Install Python dependencies
         working-directory: module_5
+        run: |
+          python -m pip install --upgrade pip
+          grep -v '^\./vendor/llama-cpp-python$' requirements.txt > requirements-ci.txt
+          python -m pip install --no-cache-dir -r requirements-ci.txt
+
+      - name: Build Linux llama-cpp-python
         env:
           CMAKE_ARGS: "-DGGML_NATIVE=OFF"
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install --no-cache-dir llama-cpp-python==0.3.35
 
-      - name: Verify llama-cpp-python
+      - name: Apply patched llama-cpp Python code
         working-directory: module_5
         run: |
-          python -c "import llama_cpp; print(llama_cpp.__file__)"
+          LLAMA_DIR="$(python -c 'import llama_cpp; print(llama_cpp.__path__[0])')"
 
-      # 1. Pylint
+          find vendor/llama-cpp-python/llama_cpp \
+            -type f \
+            -name '*.py' \
+            -not -path '*/__pycache__/*' \
+            -exec cp {} "$LLAMA_DIR/" \;
+
+          rm -rf "$LLAMA_DIR/server"
+          cp -r vendor/llama-cpp-python/llama_cpp/server "$LLAMA_DIR/"
+
+      - name: Verify llama-cpp security patch and native library
+        working-directory: module_5
+        run: |
+          LLAMA_DIR="$(python -c 'import llama_cpp; print(llama_cpp.__path__[0])')"
+
+          echo "Installed llama_cpp: $LLAMA_DIR"
+
+          if grep -Rni --include='*.py' '\bpickle\b' "$LLAMA_DIR"; then
+            echo "ERROR: pickle found in installed llama-cpp-python"
+            exit 1
+          fi
+
+          python -c "from llama_cpp import Llama; print('llama_cpp native library loaded successfully')"
+
       - name: Run Pylint
         working-directory: module_5
         run: |
           python -m pylint src --fail-under=10
 
-      # 2. pydeps + Graphviz
       - name: Generate dependency graph
         working-directory: module_5
         run: |
@@ -69,9 +95,9 @@ jobs:
             --noshow \
             -T svg \
             -o dependency.svg
+
           test -f dependency.svg
 
-      # 3. Snyk
       - name: Install Snyk
         run: |
           npm install -g snyk
@@ -81,23 +107,21 @@ jobs:
         run: |
           snyk test || true
 
-      # Initialize database
       - name: Initialize database
+        working-directory: module_5
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
           DATA_FILE: ${{ github.workspace }}/module_5/src/llm_extend_applicant_data.json
           PYTHONPATH: ${{ github.workspace }}/module_5:${{ github.workspace }}/module_5/src
-        working-directory: module_5
         run: |
           python src/load_data.py
 
-      # 4. Pytest + 100% coverage
-      - name: Run Pytest
+      - name: Run Pytest with 100% coverage
+        working-directory: module_5
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
           DATA_FILE: ${{ github.workspace }}/module_5/src/llm_extend_applicant_data.json
           PYTHONPATH: ${{ github.workspace }}/module_5:${{ github.workspace }}/module_5/src
-        working-directory: module_5
         run: |
           python -m pytest \
             -m "web or buttons or analysis or db or integration" \
