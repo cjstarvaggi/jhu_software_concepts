@@ -41,17 +41,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r module_4/requirements.txt
+          python -m pip install -r module_5/requirements.txt
 
       # 1. Pylint
       - name: Run Pylint
-        working-directory: module_4
+        working-directory: module_5
         run: |
           python -m pylint src --fail-under=10
 
       # 2. pydeps + Graphviz
       - name: Generate dependency graph
-        working-directory: module_4
+        working-directory: module_5
         run: |
           python -m pydeps src \
             --noshow \
@@ -64,7 +64,7 @@ jobs:
           npm install -g snyk
 
       - name: Run Snyk
-        working-directory: module_4
+        working-directory: module_5
         run: |
           snyk test || true
 
@@ -72,9 +72,9 @@ jobs:
       - name: Initialize database
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
-          DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
-          PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
-        working-directory: module_4
+          DATA_FILE: ${{ github.workspace }}/module_5/src/llm_extend_applicant_data.json
+          PYTHONPATH: ${{ github.workspace }}/module_5:${{ github.workspace }}/module_5/src
+        working-directory: module_5
         run: |
           python src/load_data.py
 
@@ -82,9 +82,9 @@ jobs:
       - name: Run Pytest
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
-          DATA_FILE: ${{ github.workspace }}/module_4/src/llm_extend_applicant_data.json
-          PYTHONPATH: ${{ github.workspace }}/module_4:${{ github.workspace }}/module_4/src
-        working-directory: module_4
+          DATA_FILE: ${{ github.workspace }}/module_5/src/llm_extend_applicant_data.json
+          PYTHONPATH: ${{ github.workspace }}/module_5:${{ github.workspace }}/module_5/src
+        working-directory: module_5
         run: |
           python -m pytest \
             -m "web or buttons or analysis or db or integration" \
