@@ -8,29 +8,31 @@ Due Date: 09/27/2026
 # RUN INSTRUCTIONS
 
 1. Extract the files
-2. Install the required Python packages: pip install -r requirements.txt
-3. Navigate to https://jhu-software-concepts-m4-cs.readthedocs.io/en/latest/
-4. From the project root, cd to the src folder; create a .env file containing 
-the PostgreSQL database connection information in the #ENVIRONMENT section below.
+2. Follow the steps in the Fresh Install section below as they pertain to your
+particular operating system.
+3. From the project root, cd to the src folder; create a .env file containing 
+the PostgreSQL database connection information modeled by .env.example.
 5. From the project root, cd to the src folder; then run python -m app
 6. Run the full test suite from the project root using the command:
 pytest -m "web or buttons or analysis or db or integration" --cov=src
 
-# ENVIONRMENT
+# Fresh Install
 
-In order to run the code, you must create a .env file in the src folder containing
-the following variables:
+1. Create and activate a virtual environment:
+    • If using pip, use the bash command $python -m venv .venv
+    • If using uv, use the bash command $uv venv
 
-```
-POSTGRES_HOST={host_name}
-POSTGRES_PORT={PostgreSQL_port_number}
-POSTGRES_DB={database_name}
-POSTGRES_USER={PostgreSQL_username}
-POSTGRES_PASSWORD={PostgreSQL_password}
-DATABASE_URL=postgresql://{PostgreSQL_username}:{PostgreSQL_password}@{host_name}:{PostgreSQL_port_number}/{database_name}
+2. Activate the virtual environment:
+    • Windows: $.venv\Scripts\activate
+    • macOS/Linux: $source .venv/bin/activate
 
-DATA_FILE=src/llm_extend_applicant_data.json
-```
+3. Install the dependencies:
+    • If using just pip:
+        • Run the bash command: $pip install -e .
+        • Run the bash command: $pip install -r requirements.txt
+    • If using pip and uv:
+        • Run the bash command: $uv pip install -e .
+        • Run the bash command: $uv pip sync requirements.txt
 
 # APPROACH
 
@@ -78,6 +80,24 @@ of the application from start to end. Every aspect of the code is checked utiliz
 the command pytest -m "web or buttons or analysis or db or integration" or after
 commit to the github repository via an automated GitHub Actions workflow. Sphinx-enabled
 documentation is also provided for every major class and function in the program.
+
+Every script in the src folder has been linted with the pylint library to ensure
+security compliance, with additional checks completed by snyk cli and snyk code.
+Addressed vulnerabilities are documented in the SECURITY section below.
+
+# SECURITY
+
+During a run of Snyk CLI, a vulnerability was found within the installed llama-ccp-python
+library, tied to a diskcache import within the package; the vulnerability persisted even 
+though the program doesn't touch the affected part of the package. A pull request on the 
+official repo page documenting the issue, but due to it not being resolved as of project
+submission, the package was manually patched to remove the vulnerable package. The patched
+package is included in the vendor folder and has been added to the requirements text file.
+
+Running Snyk Code revealed seven minor issues, all related to unsanitized inputs directly 
+inside file-handling functions like open() and json.dump() in the llm_hosting and patched
+llama_ccp folders. Due to their low risk nature, it wasn't necessary to overhaul those
+sections of the script.
 
 # LIMITATIONS
 
