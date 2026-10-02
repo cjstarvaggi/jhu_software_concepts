@@ -46,8 +46,13 @@ jobs:
         working-directory: module_5
         run: |
           python -m pip install --upgrade pip
-          grep -v '^\./vendor/llama-cpp-python$' requirements.txt > requirements-ci.txt
-          python -m pip install --no-cache-dir -r requirements-ci.txt
+
+          grep -v '^\./vendor/llama-cpp-python$' \
+            requirements.txt > requirements-ci.txt
+
+          python -m pip install \
+            --no-cache-dir \
+            -r requirements-ci.txt
 
       - name: Build Linux llama native wheel
         env:
@@ -77,16 +82,23 @@ jobs:
           import os
           import sysconfig
 
-          site_packages = sysconfig.get_paths()["purelib"]
-          print(os.path.join(site_packages, "llama_cpp"))
+          print(
+              os.path.join(
+                  sysconfig.get_paths()["purelib"],
+                  "llama_cpp",
+              )
+          )
           PY
           )"
 
+          LLAMA_LIB_DIR="$LLAMA_DIR/lib"
+
           echo "LLAMA_DIR=$LLAMA_DIR"
+          echo "LLAMA_LIB_DIR=$LLAMA_LIB_DIR"
 
           test -d "$LLAMA_DIR"
 
-          python - "$LLAMA_DIR" <<'PY'
+          python - "$LLAMA_LIB_DIR" <<'PY'
           import glob
           import os
           import sys
@@ -104,28 +116,27 @@ jobs:
               )
 
           wheel = wheels[0]
-          lib_dir = os.path.join(target, "lib")
-          os.makedirs(lib_dir, exist_ok=True)
 
           print(f"Using wheel: {wheel}")
-          print(f"Target library directory: {lib_dir}")
+
+          os.makedirs(target, exist_ok=True)
 
           with zipfile.ZipFile(wheel) as archive:
               members = [
                   name
                   for name in archive.namelist()
                   if name.startswith("llama_cpp/lib/")
-                  and name.endswith(".so")
+                  and ".so" in os.path.basename(name)
               ]
 
               if not members:
                   raise SystemExit(
-                      "No Linux .so libraries found in llama-cpp wheel"
+                      "No Linux shared libraries found in llama-cpp wheel"
                   )
 
               for name in members:
                   destination = os.path.join(
-                      lib_dir,
+                      target,
                       os.path.basename(name),
                   )
 
@@ -136,35 +147,50 @@ jobs:
                   print(f"Installed {destination}")
           PY
 
-          echo "Installed native libraries:"
-          ls -lah "$LLAMA_DIR/lib"
+          echo "Installed llama libraries:"
+          ls -lah "$LLAMA_LIB_DIR"
 
-          test -f "$LLAMA_DIR/lib/libllama.so"
+          test -f "$LLAMA_LIB_DIR/libllama.so"
+          test -f "$LLAMA_LIB_DIR/libggml.so.0"
 
-      - name: Verify llama installation and patched Python code
+          echo "$LLAMA_LIB_DIR" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$LLAMA_LIB_DIR:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Verify llama installation
         working-directory: module_5
         run: |
-          if python -m pip show diskcache >/dev/null 2>&1; then
-            echo "ERROR: diskcache must not be installed"
-            exit 1
-          fi
-
           LLAMA_DIR="$(python - <<'PY'
           import os
           import sysconfig
 
-          print(os.path.join(sysconfig.get_paths()["purelib"], "llama_cpp"))
+          print(
+              os.path.join(
+                  sysconfig.get_paths()["purelib"],
+                  "llama_cpp",
+              )
+          )
           PY
           )"
+
+          export LD_LIBRARY_PATH="$LLAMA_DIR/lib:${LD_LIBRARY_PATH:-}"
+
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+          if python -m pip show diskcache >/dev/null 2>&1; then
+            echo "ERROR: diskcache must not be installed"
+            exit 1
+          fi
 
           if grep -Rni --include='*.py' '\bpickle\b' "$LLAMA_DIR"; then
             echo "ERROR: pickle reference found in installed llama_cpp package"
             exit 1
           fi
 
-          test -f "$LLAMA_DIR/lib/libllama.so"
+          echo "Checking native library dependencies:"
+          ldd "$LLAMA_DIR/lib/libllama.so"
 
-          python -c "from llama_cpp import Llama; print('llama_cpp import successful')"
+          python -c \
+            "from llama_cpp import Llama; print('llama_cpp import successful')"
 
       - name: Run Pylint
         working-directory: module_5
