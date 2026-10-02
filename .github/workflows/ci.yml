@@ -104,8 +104,10 @@ jobs:
 
       - name: Run Snyk
         working-directory: module_5
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test || true
+          snyk test
 
       - name: Initialize database
         working-directory: module_5
