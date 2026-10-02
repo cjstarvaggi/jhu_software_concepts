@@ -54,6 +54,12 @@ jobs:
             --no-cache-dir \
             -r requirements-ci.txt
 
+          python -m pip install \
+            --no-cache-dir \
+            "numpy>=1.20.0" \
+            "typing-extensions>=4.5.0" \
+            "jinja2>=2.11.3"
+
       - name: Build Linux llama native wheel
         env:
           CMAKE_ARGS: "-DGGML_NATIVE=OFF"
@@ -188,6 +194,8 @@ jobs:
 
           echo "Checking native library dependencies:"
           ldd "$LLAMA_DIR/lib/libllama.so"
+
+          python -c "import numpy; print('numpy:', numpy.__version__)"
 
           python -c \
             "from llama_cpp import Llama; print('llama_cpp import successful')"
