@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Graphviz and native build dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -42,8 +42,10 @@ jobs:
             cmake \
             ninja-build
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         working-directory: module_5
+        env:
+          CMAKE_ARGS: "-DGGML_NATIVE=OFF"
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
@@ -52,7 +54,6 @@ jobs:
         working-directory: module_5
         run: |
           python -c "import llama_cpp; print(llama_cpp.__file__)"
-          find . -name 'libllama*.so' -o -name 'llama*.so' | head -20
 
       # 1. Pylint
       - name: Run Pylint
