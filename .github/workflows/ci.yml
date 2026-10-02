@@ -56,7 +56,8 @@ jobs:
         run: |
           python -m pydeps src \
             --noshow \
-            --output=dependency.svg
+            -T svg \
+            -o dependency.svg
           test -f dependency.svg
 
       # 3. Snyk
