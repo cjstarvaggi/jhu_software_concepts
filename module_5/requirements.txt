@@ -4,9 +4,11 @@ huggingface_hub==1.30.0
 psycopg==3.3.5
 pytest==9.1.1
 pytest-cov==7.1.0
-python-dotenv==1.2.3
-selenium==4.49.0
-SQLAlchemy==2.1.0
+python-dotenv==1.2.4
+selenium==4.50.0
+SQLAlchemy==2.1.1
 sphinx==9.1.0
 sphinx-rtd-theme==3.1.0
-llama-cpp-python==0.3.35
+./vendor/llama-cpp-python
+pydeps==3.0.8
+pylint==4.1.1
