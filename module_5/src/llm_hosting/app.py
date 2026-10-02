@@ -81,13 +81,15 @@ COMMON_UNI_FIXES: Dict[str, str] = {
     "Friedrich-Schiller Universität Jenna": "Friedrich-Schiller Universität Jena",
     "Feerdowsi University of Mashhad": "Ferdowsi University of Mashhad",
     "University of Dhaaka": "University of Dhaka",
-    "Islamic Azad University, Farsi Science & Research Branch": "Islamic Azad University, Fars Science & Research Branch",
+    "Islamic Azad University, Farsi Science & Research Branch": 
+        "Islamic Azad University, Fars Science & Research Branch",
     "Feederal University of Technology, Minna": "Federal University of Technology, Minna",
     "LaDoke Akintola University of Technology": "Ladoke Akintola University of Technology",
     "Beijiing Normal University": "Beijing Normal University",
     "University of Guilañ": "University of Guilan",
     "University of South Floridaa": "University of South Florida",
-    "AbduS Salam International Centre for Theoretical Physics": "Abdus Salam International Centre for Theoretical Physics",
+    "AbduS Salam International Centre for Theoretical Physics": 
+        "Abdus Salam International Centre for Theoretical Physics",
 }
 
 COMMON_PROG_FIXES: Dict[str, str] = {

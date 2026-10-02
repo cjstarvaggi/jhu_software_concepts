@@ -227,7 +227,7 @@ def _question_5(session, print_string=True):
     accepted = session.execute(accepted_statement).scalar_one()
 
     if total == 0:
-        result_string = "Fall 2025 acceptance percentage: N/A " "(no Fall 2025 entries)"
+        result_string = "Fall 2025 acceptance percentage: N/A (no Fall 2025 entries)"
     else:
         percentage = (accepted / total) * 100
         result_string = f"Fall 2025 acceptance percentage: {percentage:.2f}%"

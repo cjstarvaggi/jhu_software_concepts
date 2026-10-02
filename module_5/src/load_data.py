@@ -324,6 +324,46 @@ def _insert_params(record):
     ]
 
 
+def _process_applicant(
+    cursor,
+    applicant,
+    check_exists_stmt,
+    insert_stmt,
+):
+    """
+    Process a single applicant record.
+
+    :param cursor: Active PostgreSQL database cursor.
+    :param applicant: Applicant data loaded from the JSON file.
+    :param check_exists_stmt: SQL statement used to check for an existing
+        applicant.
+    :param insert_stmt: SQL statement used to insert or update an applicant.
+    :return: Processing status: ``inserted``, ``updated``, ``unchanged``,
+        or ``skipped``.
+    :rtype: str
+    """
+    record = _transform_record(applicant)
+
+    if record is None:
+        return "skipped"
+
+    check_exists_params = [record["p_id"]]
+    cursor.execute(check_exists_stmt, check_exists_params)
+
+    existed = cursor.fetchone() is not None
+
+    insert_params = _insert_params(record)
+    cursor.execute(insert_stmt, insert_params)
+
+    if not existed:
+        return "inserted"
+
+    if cursor.rowcount == 1:
+        return "updated"
+
+    return "unchanged"
+
+
 def main(rollback=False, data_file=None):
     """
     Load applicant data from JSON and synchronize it with PostgreSQL.
@@ -334,8 +374,8 @@ def main(rollback=False, data_file=None):
     when they differ.
 
     Database changes are committed unless ``rollback`` is ``True``. Any
-    exception during processing causes the current transaction to be
-    rolled back before the exception is re-raised.
+    exception during processing causes the current transaction to be rolled
+    back before the exception is re-raised.
 
     :param rollback: If ``True``, roll back the transaction instead of
         committing changes.
@@ -363,35 +403,24 @@ def main(rollback=False, data_file=None):
     with psycopg.connect(connection_string) as conn:
         try:
             with conn.cursor() as cursor:
-                create_table_stmt = CREATE_TABLE_SQL
-                check_exists_stmt = CHECK_EXISTS_SQL
-                insert_stmt = INSERT_SQL
-
-                cursor.execute(create_table_stmt)
+                cursor.execute(CREATE_TABLE_SQL)
 
                 for applicant in applicants:
-                    record = _transform_record(applicant)
+                    status = _process_applicant(
+                        cursor,
+                        applicant,
+                        CHECK_EXISTS_SQL,
+                        INSERT_SQL,
+                    )
 
-                    if record is None:
-                        skipped += 1
-                        continue
-
-                    check_exists_params = [record["p_id"]]
-
-                    cursor.execute(check_exists_stmt, check_exists_params)
-
-                    existed = cursor.fetchone() is not None
-
-                    insert_params = _insert_params(record)
-
-                    cursor.execute(insert_stmt, insert_params)
-
-                    if not existed:
+                    if status == "inserted":
                         inserted += 1
-                    elif cursor.rowcount == 1:
+                    elif status == "updated":
                         updated += 1
-                    else:
+                    elif status == "unchanged":
                         unchanged += 1
+                    else:
+                        skipped += 1
 
             if rollback:
                 conn.rollback()
