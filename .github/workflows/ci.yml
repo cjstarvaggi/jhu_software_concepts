@@ -49,39 +49,99 @@ jobs:
           grep -v '^\./vendor/llama-cpp-python$' requirements.txt > requirements-ci.txt
           python -m pip install --no-cache-dir -r requirements-ci.txt
 
-      - name: Build Linux llama-cpp-python
+      # Build the Linux native llama libraries without installing the
+      # upstream Python package or its diskcache dependency.
+      - name: Build Linux llama native wheel
         env:
           CMAKE_ARGS: "-DGGML_NATIVE=OFF"
         run: |
-          python -m pip install --no-cache-dir llama-cpp-python==0.3.35
+          rm -rf /tmp/llama-wheel
+          mkdir -p /tmp/llama-wheel
 
-      - name: Apply patched llama-cpp Python code
+          python -m pip wheel \
+            --no-cache-dir \
+            --no-deps \
+            --wheel-dir /tmp/llama-wheel \
+            llama-cpp-python==0.3.35
+
+      # Install the user's patched vendored Python package.
+      - name: Install patched llama-cpp Python package
+        working-directory: module_5
+        run: |
+          python -m pip install \
+            --no-cache-dir \
+            --no-deps \
+            ./vendor/llama-cpp-python
+
+      # Copy only the Linux native .so files from the upstream wheel into
+      # the patched package. The upstream package itself is never installed,
+      # so diskcache is never introduced.
+      - name: Install Linux llama native libraries
         working-directory: module_5
         run: |
           LLAMA_DIR="$(python -c 'import llama_cpp; print(llama_cpp.__path__[0])')"
 
-          find vendor/llama-cpp-python/llama_cpp \
-            -type f \
-            -name '*.py' \
-            -not -path '*/__pycache__/*' \
-            -exec cp {} "$LLAMA_DIR/" \;
+          python - "$LLAMA_DIR" <<'PY'
+          import glob
+          import os
+          import sys
+          import zipfile
 
-          rm -rf "$LLAMA_DIR/server"
-          cp -r vendor/llama-cpp-python/llama_cpp/server "$LLAMA_DIR/"
+          target = sys.argv[1]
+          wheels = glob.glob(
+              "/tmp/llama-wheel/llama_cpp_python-0.3.35-*.whl"
+          )
 
-      - name: Verify llama-cpp security patch and native library
+          if len(wheels) != 1:
+              raise SystemExit(
+                  f"Expected exactly one llama-cpp wheel, found: {wheels}"
+              )
+
+          wheel = wheels[0]
+          lib_dir = os.path.join(target, "lib")
+          os.makedirs(lib_dir, exist_ok=True)
+
+          with zipfile.ZipFile(wheel) as archive:
+              members = [
+                  name
+                  for name in archive.namelist()
+                  if name.startswith("llama_cpp/lib/")
+                  and name.endswith(".so")
+              ]
+
+              if not members:
+                  raise SystemExit(
+                      "No Linux .so libraries found in llama-cpp wheel"
+                  )
+
+              for name in members:
+                  destination = os.path.join(
+                      lib_dir,
+                      os.path.basename(name),
+                  )
+
+                  with archive.open(name) as source:
+                      with open(destination, "wb") as dest:
+                          dest.write(source.read())
+
+                  print(f"Installed {destination}")
+          PY
+
+      - name: Verify llama installation and patched Python code
         working-directory: module_5
         run: |
-          LLAMA_DIR="$(python -c 'import llama_cpp; print(llama_cpp.__path__[0])')"
+          python -m pip show diskcache && exit 1 || true
 
-          echo "Installed llama_cpp: $LLAMA_DIR"
+          LLAMA_DIR="$(python -c 'import llama_cpp; print(llama_cpp.__path__[0])')"
 
           if grep -Rni --include='*.py' '\bpickle\b' "$LLAMA_DIR"; then
-            echo "ERROR: pickle found in installed llama-cpp-python"
+            echo "pickle reference found in installed llama_cpp package"
             exit 1
           fi
 
-          python -c "from llama_cpp import Llama; print('llama_cpp native library loaded successfully')"
+          test -f "$LLAMA_DIR/lib/libllama.so"
+
+          python -c "from llama_cpp import Llama; print('llama_cpp import successful')"
 
       - name: Run Pylint
         working-directory: module_5
@@ -98,16 +158,27 @@ jobs:
 
           test -f dependency.svg
 
-      - name: Install Snyk
+      - name: Install Snyk CLI
         run: |
           npm install -g snyk
 
-      - name: Run Snyk
+      - name: Run Snyk on application dependencies
         working-directory: module_5
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test
+          snyk test \
+            --file=requirements-ci.txt \
+            --package-manager=pip
+
+      - name: Run Snyk on patched llama-cpp package
+        working-directory: module_5
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk test \
+            --file=vendor/llama-cpp-python/setup.py \
+            --package-manager=pip
 
       - name: Initialize database
         working-directory: module_5
@@ -118,7 +189,7 @@ jobs:
         run: |
           python src/load_data.py
 
-      - name: Run Pytest with 100% coverage
+      - name: Run pytest with 100% coverage requirement
         working-directory: module_5
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/GradCafe
